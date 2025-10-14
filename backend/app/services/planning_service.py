@@ -318,6 +318,110 @@ async def execute_action(
                 execution_time=time.time() - start_time
             )
 
+        # Phase 5: Tool Ecosystem - External tool integrations
+        elif action.type == ActionType.SEND_EMAIL:
+            # Send email via email tool
+            try:
+                from app.services.tools import get_tool_registry
+
+                registry = get_tool_registry()
+                result = await registry.execute_tool("send_email", action.params)
+
+                return ActionResult(
+                    action_type=action.type,
+                    success=result.get("success", False),
+                    data=result,
+                    error=result.get("error"),
+                    execution_time=time.time() - start_time
+                )
+
+            except Exception as e:
+                logger.error(f"Error executing email tool: {e}")
+                return ActionResult(
+                    action_type=action.type,
+                    success=False,
+                    error=str(e),
+                    execution_time=time.time() - start_time
+                )
+
+        elif action.type == ActionType.CHECK_CALENDAR:
+            # Calendar operations (check availability, schedule)
+            try:
+                from app.services.tools import get_tool_registry
+
+                registry = get_tool_registry()
+                result = await registry.execute_tool("calendar", action.params)
+
+                return ActionResult(
+                    action_type=action.type,
+                    success=result.get("success", False),
+                    data=result,
+                    error=result.get("error"),
+                    execution_time=time.time() - start_time
+                )
+
+            except Exception as e:
+                logger.error(f"Error executing calendar tool: {e}")
+                return ActionResult(
+                    action_type=action.type,
+                    success=False,
+                    error=str(e),
+                    execution_time=time.time() - start_time
+                )
+
+        elif action.type == ActionType.QUERY_CRM:
+            # CRM operations (get contact, search, log interaction)
+            try:
+                from app.services.tools import get_tool_registry
+
+                registry = get_tool_registry()
+                result = await registry.execute_tool("crm", action.params)
+
+                return ActionResult(
+                    action_type=action.type,
+                    success=result.get("success", False),
+                    data=result,
+                    error=result.get("error"),
+                    execution_time=time.time() - start_time
+                )
+
+            except Exception as e:
+                logger.error(f"Error executing CRM tool: {e}")
+                return ActionResult(
+                    action_type=action.type,
+                    success=False,
+                    error=str(e),
+                    execution_time=time.time() - start_time
+                )
+
+        elif action.type == ActionType.CALL_API:
+            # Generic API call (web search or custom API)
+            try:
+                from app.services.tools import get_tool_registry
+
+                # Determine which tool to use based on params
+                tool_name = action.params.get("tool", "web_search")
+
+                registry = get_tool_registry()
+                result = await registry.execute_tool(tool_name, action.params)
+
+                return ActionResult(
+                    action_type=action.type,
+                    success=result.get("success", False),
+                    data=result,
+                    error=result.get("error"),
+                    execution_time=time.time() - start_time
+                )
+
+            except Exception as e:
+                logger.error(f"Error executing API call: {e}")
+                return ActionResult(
+                    action_type=action.type,
+                    success=False,
+                    error=str(e),
+                    execution_time=time.time() - start_time
+                )
+
         else:
             # Action not implemented yet
             return ActionResult(
@@ -364,6 +468,37 @@ async def aggregate_results(plan: ActionPlan, results: List[ActionResult]) -> st
 
             elif result.action_type == ActionType.ASK_CLARIFICATION:
                 data_parts.append(result.data.get("clarification", ""))
+
+            # Phase 5: Tool Ecosystem results
+            elif result.action_type == ActionType.SEND_EMAIL:
+                message = result.data.get("message", "Email sent successfully")
+                data_parts.append(message)
+
+            elif result.action_type == ActionType.CHECK_CALENDAR:
+                # Format calendar results
+                if "available_slots" in result.data:
+                    slots = result.data["available_slots"]
+                    data_parts.append(f"Found {len(slots)} available time slots on {result.data.get('date', 'the requested date')}")
+                elif "appointment_id" in result.data:
+                    data_parts.append(f"Appointment scheduled successfully")
+                elif "appointments" in result.data:
+                    apts = result.data["appointments"]
+                    data_parts.append(f"Found {len(apts)} upcoming appointments")
+
+            elif result.action_type == ActionType.QUERY_CRM:
+                # Format CRM results
+                if "contact" in result.data:
+                    contact = result.data["contact"]
+                    data_parts.append(f"Contact found: {contact.get('name', contact.get('email', 'Unknown'))}")
+                elif "contacts" in result.data:
+                    contacts = result.data["contacts"]
+                    data_parts.append(f"Found {len(contacts)} contacts")
+
+            elif result.action_type == ActionType.CALL_API:
+                # Format web search or API results
+                if "results" in result.data:
+                    results_count = len(result.data["results"])
+                    data_parts.append(f"Found {results_count} results from {result.data.get('provider', 'web search')}")
 
     # Combine parts
     if data_parts:

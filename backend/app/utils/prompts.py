@@ -265,8 +265,10 @@ Available actions:
 - VALIDATE_DATA: Validate data format (email, phone, etc.)
 - FORMAT_RESPONSE: Structure final response
 - ASK_CLARIFICATION: Request more information from user
-- SEND_EMAIL: Send email (future feature)
-- CHECK_CALENDAR: Check availability (future feature)
+- SEND_EMAIL: Send email to recipients (Phase 5: Tool Ecosystem)
+- CHECK_CALENDAR: Check availability or schedule appointments (Phase 5: Tool Ecosystem)
+- QUERY_CRM: Get customer data or log interactions (Phase 5: Tool Ecosystem)
+- CALL_API: Search web for current information (Phase 5: Tool Ecosystem)
 
 Respond in this EXACT format:
 
