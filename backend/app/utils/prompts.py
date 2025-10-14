@@ -246,3 +246,49 @@ RETRY: yes|no
 ADJUSTMENT: your suggestion here
 
 Assessment:"""
+
+
+# ========================================
+# AGENTIC PROMPTS (Phase 2: Planning Layer)
+# ========================================
+
+# Planning prompt for LLM-based task decomposition
+PLANNING_PROMPT = """You are a task planning system for a customer service chatbot. Decompose this user request into a sequence of executable actions.
+
+USER QUERY: "{query}"
+DETECTED INTENT: {intent}
+{context}
+
+Available actions:
+- SEARCH_KNOWLEDGE: Search knowledge base for information
+- GET_CONTACT_INFO: Extract specific contact details (email, phone, address)
+- VALIDATE_DATA: Validate data format (email, phone, etc.)
+- FORMAT_RESPONSE: Structure final response
+- ASK_CLARIFICATION: Request more information from user
+- SEND_EMAIL: Send email (future feature)
+- CHECK_CALENDAR: Check availability (future feature)
+
+Respond in this EXACT format:
+
+GOAL: brief description of what the plan achieves
+COMPLEXITY: simple|moderate|complex
+
+STEP 1: ACTION_TYPE
+Description: what this step does
+Params: {{"key": "value"}}
+
+STEP 2: ACTION_TYPE
+Description: what this step does
+Params: {{"key": "value"}}
+
+...
+
+Guidelines:
+- Use minimum steps necessary (2-4 steps ideal)
+- Each step should be clear and atomic
+- Steps execute sequentially (later steps can use results from earlier ones)
+- If query is unclear, include ASK_CLARIFICATION
+- For contact info, use GET_CONTACT_INFO instead of SEARCH_KNOWLEDGE
+- Only use actions from the available list above
+
+Plan:"""

@@ -235,14 +235,55 @@ async def get_rag_response(
             logger.info(f"Using conversational response for intent: {intent.value}")
             return await get_conversational_response(intent, processed_query, session_id)
 
-        # 3. Continue with RAG pipeline for questions
+        # 3. Check if planning needed (Phase 2: Planning Layer)
+        from app.services.planning_service import needs_planning, create_plan, execute_plan
+
+        if await needs_planning(processed_query, intent):
+            logger.info("Complex query detected, using planning approach")
+
+            # Create action plan
+            plan = await create_plan(
+                query=processed_query,
+                intent=intent,
+                context={"session_id": session_id}
+            )
+
+            # Execute plan
+            plan_result = await execute_plan(plan, session_id)
+
+            # Validate final response
+            from app.services.validation_service import validate_response
+
+            validation = await validate_response(
+                query=query,
+                response=plan_result["response"],
+                sources=[]  # Sources embedded in plan results
+            )
+
+            return {
+                "response": plan_result["response"],
+                "sources": [],
+                "context_found": plan_result["success"],
+                "intent": intent.value,
+                "conversational": False,
+                "planned": True,  # NEW: Indicate planned response
+                "plan": plan.dict(),
+                "validation": {
+                    "confidence": validation["confidence"],
+                    "retry_count": 0,
+                    "issues": validation["issues"],
+                    "is_valid": validation["is_valid"]
+                }
+            }
+
+        # 4. Continue with RAG pipeline for simple questions
         logger.info("Using RAG pipeline for question/unknown intent")
 
-        # 4. Embed the processed query
+        # 5. Embed the processed query
         query_embedding = await get_embedding(processed_query)
         logger.debug("Query embedded successfully")
 
-        # 5. Adjust threshold for factual queries (hybrid search)
+        # 6. Adjust threshold for factual queries (hybrid search)
         # Keywords that indicate queries needing exact info (email, phone, etc.)
         query_lower = processed_query.lower()
         factual_keywords = ["email", "phone", "contact", "address", "number", "reach", "call", "location", "where", "office"]
@@ -261,7 +302,7 @@ async def get_rag_response(
             logger.info(f"Detected factual query with keywords: {[k for k in factual_keywords if k in query_lower]}")
             logger.info(f"Using relaxed threshold: {threshold} (default: {settings.RAG_SIMILARITY_THRESHOLD})")
 
-        # 6. Similarity search (retrieve more candidates for factual queries to allow re-ranking)
+        # 7. Similarity search (retrieve more candidates for factual queries to allow re-ranking)
         top_k = settings.RAG_TOP_K * 2 if is_factual_query else settings.RAG_TOP_K
         logger.info(f"Calling similarity_search with top_k={top_k}, threshold={threshold}")
         relevant_docs = await similarity_search(
@@ -271,7 +312,7 @@ async def get_rag_response(
         )
         logger.info(f"Similarity search returned {len(relevant_docs) if relevant_docs else 0} documents")
 
-        # 7. Re-rank results for factual queries (boost documents with actual facts)
+        # 8. Re-rank results for factual queries (boost documents with actual facts)
         if is_factual_query and relevant_docs:
             # Check query for specific keywords
             needs_email = "email" in query_lower
@@ -303,7 +344,7 @@ async def get_rag_response(
             relevant_docs = relevant_docs[:settings.RAG_TOP_K]
             logger.info(f"Re-ranked results for factual query, keeping top {len(relevant_docs)}")
 
-        # 8. Check if we have relevant context
+        # 9. Check if we have relevant context
         if not relevant_docs or len(relevant_docs) == 0:
             logger.warning(f"No relevant documents found for query: '{query[:50]}...'")
             logger.warning(f"Threshold: {settings.RAG_SIMILARITY_THRESHOLD}, Top-K: {settings.RAG_TOP_K}")
@@ -314,7 +355,7 @@ async def get_rag_response(
                 "intent": intent.value
             }
 
-        # 9. Build context from retrieved documents
+        # 10. Build context from retrieved documents
         context_parts = []
         sources = []
 
@@ -333,26 +374,26 @@ async def get_rag_response(
 
         context = "\n\n".join(context_parts)
 
-        # 10. Get conversation history (if available)
+        # 11. Get conversation history (if available)
         history_text = "No previous conversation."
 
         if include_history and session_id:
             history = await get_conversation_history(session_id, limit=5)
             history_text = await format_history_for_llm(history)
 
-        # 11. Build prompt (use original query so user sees their question)
+        # 12. Build prompt (use original query so user sees their question)
         prompt = RAG_SYSTEM_PROMPT.format(
             context=context,
             history=history_text,
             query=query  # Use original query in prompt for natural response
         )
 
-        # 12. Generate response using LLM
+        # 13. Generate response using LLM
         response_text = await generate_response(prompt)
 
         logger.info("RAG response generated successfully")
 
-        # 13. VALIDATE RESPONSE (Phase 1: Observation Layer)
+        # 14. VALIDATE RESPONSE (Phase 1: Observation Layer)
         from app.services.validation_service import validate_response, retry_with_adjustment
 
         validation = await validate_response(
@@ -361,7 +402,7 @@ async def get_rag_response(
             sources=sources
         )
 
-        # 14. RETRY IF NEEDED (Phase 1: Observation Layer)
+        # 15. RETRY IF NEEDED (Phase 1: Observation Layer)
         retry_count = 0
         while not validation["is_valid"] and validation["retry_recommended"] and retry_count < max_retries:
             retry_count += 1
@@ -393,7 +434,7 @@ async def get_rag_response(
         else:
             logger.warning(f"Final response still has issues after {retry_count} retries: {validation['issues']}")
 
-        # 15. Return with validation metadata
+        # 16. Return with validation metadata
         return {
             "response": response_text,
             "sources": sources,
