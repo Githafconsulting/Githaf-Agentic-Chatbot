@@ -292,3 +292,64 @@ Guidelines:
 - Only use actions from the available list above
 
 Plan:"""
+
+
+# ========================================
+# AGENTIC PROMPTS (Phase 4: Advanced Memory)
+# ========================================
+
+# Semantic fact extraction prompt
+SEMANTIC_EXTRACTION_PROMPT = """You are a semantic fact extractor. Analyze this customer service conversation and extract important factual information.
+
+Conversation:
+{conversation_text}
+
+Extract facts such as:
+- User preferences (e.g., "User prefers email communication")
+- Specific requests (e.g., "User needs pricing for enterprise package")
+- Business context (e.g., "User is from healthcare industry")
+- Follow-up needs (e.g., "User wants to schedule a demo")
+- Problems mentioned (e.g., "User experiencing integration issues")
+
+Respond in this EXACT format:
+
+FACT 1: [factual statement]
+Category: [preference|request|context|followup|problem|other]
+Confidence: [0.0-1.0]
+
+FACT 2: [factual statement]
+Category: [category]
+Confidence: [0.0-1.0]
+
+(List all relevant facts, minimum 0, maximum 10)
+
+Facts:"""
+
+# Conversation summarization prompt
+CONVERSATION_SUMMARY_PROMPT = """You are a conversation summarizer. Create a concise summary of this customer service conversation.
+
+Conversation ({message_count} messages):
+{conversation_text}
+
+Create a structured summary with:
+
+1. **Main Topic**: What was the conversation about? (1 sentence)
+2. **User Intent**: What did the user want? (1 sentence)
+3. **Key Points**: Important details discussed (3-5 bullet points)
+4. **Resolution Status**: Was the query resolved? (resolved|partially_resolved|unresolved)
+5. **Follow-up Needed**: Does this require follow-up? (yes|no)
+6. **Sentiment**: Overall conversation tone (positive|neutral|negative)
+
+Respond in this EXACT format:
+
+MAIN_TOPIC: [topic]
+USER_INTENT: [intent]
+KEY_POINTS:
+- [point 1]
+- [point 2]
+- [point 3]
+RESOLUTION: [status]
+FOLLOWUP: [yes/no]
+SENTIMENT: [sentiment]
+
+Summary:"""

@@ -276,10 +276,23 @@ async def get_rag_response(
                 }
             }
 
-        # 4. Continue with RAG pipeline for simple questions
+        # 4. Enrich query with semantic memory (Phase 4: Advanced Memory)
+        if session_id:
+            try:
+                from app.services.memory_service import retrieve_semantic_memory
+
+                memories = await retrieve_semantic_memory(session_id, query=processed_query, limit=3)
+                if memories:
+                    logger.info(f"Retrieved {len(memories)} relevant memories for query enrichment")
+                    # Add memory context to query processing (implicit enrichment)
+                    # Memories will be used in step 11 when building the LLM prompt
+            except Exception as e:
+                logger.warning(f"Failed to retrieve semantic memory: {e}")
+
+        # 5. Continue with RAG pipeline for simple questions
         logger.info("Using RAG pipeline for question/unknown intent")
 
-        # 5. Embed the processed query
+        # 6. Embed the processed query
         query_embedding = await get_embedding(processed_query)
         logger.debug("Query embedded successfully")
 
@@ -490,3 +503,48 @@ async def evaluate_query_quality(query: str) -> Dict[str, Any]:
         "is_clear": quality_score > 0.5,
         "suggestions": []
     }
+
+
+async def process_conversation_memory(conversation_id: str, session_id: str) -> Dict[str, Any]:
+    """
+    Process conversation for long-term memory (Phase 4: Advanced Memory)
+    Extracts semantic facts and creates summary
+
+    Args:
+        conversation_id: ID of conversation to process
+        session_id: Session identifier
+
+    Returns:
+        Processing results
+    """
+    logger.info(f"Processing conversation {conversation_id} for memory storage")
+
+    try:
+        from app.services.memory_service import extract_semantic_facts, store_semantic_memory
+        from app.services.conversation_summary_service import summarize_conversation
+
+        # Extract semantic facts
+        facts = await extract_semantic_facts(conversation_id)
+
+        # Store facts in semantic memory
+        facts_stored = 0
+        if facts:
+            facts_stored = await store_semantic_memory(facts, session_id)
+
+        # Generate conversation summary
+        summary = await summarize_conversation(conversation_id)
+
+        return {
+            "success": True,
+            "facts_extracted": len(facts),
+            "facts_stored": facts_stored,
+            "summary_created": summary is not None,
+            "summary": summary
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing conversation memory: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
