@@ -41,6 +41,13 @@ export const FlaggedPage: React.FC = () => {
 
       // Handle both array and object responses
       const feedbackList = Array.isArray(data) ? data : (data.flagged_queries || data.queries || []);
+
+      // Debug: Log first item to check field names
+      if (feedbackList.length > 0) {
+        console.log('First feedback item:', feedbackList[0]);
+        console.log('Available fields:', Object.keys(feedbackList[0]));
+      }
+
       setFlaggedQueries(feedbackList);
       setError('');
     } catch (err: any) {
@@ -159,17 +166,15 @@ export const FlaggedPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
           </div>
           <div className="flex items-center gap-2">
-            {ratingFilter !== 'all' && (
-              <motion.button
-                onClick={clearFilters}
-                className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <X size={14} />
-                Clear Filters
-              </motion.button>
-            )}
+            <motion.button
+              onClick={clearFilters}
+              className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <X size={14} />
+              Clear Filters
+            </motion.button>
             <motion.button
               onClick={() => setShowFilters(!showFilters)}
               className="text-sm text-blue-400 hover:text-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-900/20 transition-colors"
