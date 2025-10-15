@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flag, AlertCircle, User, Bot, ThumbsDown, ThumbsUp, MessageSquare, Hash, Clock, Lightbulb, Info, Filter, X, Calendar } from 'lucide-react';
+import { Flag, AlertCircle, User, Bot, ThumbsDown, ThumbsUp, MessageSquare, Hash, Clock, Lightbulb, Info, Filter, X } from 'lucide-react';
 import { apiService } from '../../services/api';
 import type { FlaggedQuery } from '../../types';
 import { staggerContainer, staggerItem } from '../../utils/animations';
+import { DateRangePicker } from '../../components/DateRangePicker';
 
 type RatingFilter = 'all' | 'positive' | 'negative';
 
@@ -15,8 +16,10 @@ export const FlaggedPage: React.FC = () => {
 
   // Filter states
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+    endDate: new Date(),
+  });
   const [showFilters, setShowFilters] = useState(true);
 
   useEffect(() => {
@@ -25,7 +28,7 @@ export const FlaggedPage: React.FC = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [flaggedQueries, ratingFilter, startDate, endDate]);
+  }, [flaggedQueries, ratingFilter, dateRange]);
 
   const loadFlaggedQueries = async () => {
     try {
@@ -60,37 +63,38 @@ export const FlaggedPage: React.FC = () => {
     }
 
     // Date filter
-    if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(q => new Date(q.created_at) >= start);
-    }
+    const start = new Date(dateRange.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(dateRange.endDate);
+    end.setHours(23, 59, 59, 999);
 
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(q => new Date(q.created_at) <= end);
-    }
+    filtered = filtered.filter(q => {
+      const date = new Date(q.created_at);
+      return date >= start && date <= end;
+    });
 
     setFilteredQueries(filtered);
   };
 
   const clearFilters = () => {
     setRatingFilter('all');
-    setStartDate('');
-    setEndDate('');
+    setDateRange({
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date(),
+    });
   };
 
-  const getStats = () => {
-    const total = filteredQueries.length;
-    const positive = filteredQueries.filter(q => q.rating === 1).length;
-    const negative = filteredQueries.filter(q => q.rating === 0).length;
+  // Calculate overall stats from ALL feedback (not filtered)
+  const getOverallStats = () => {
+    const total = flaggedQueries.length;
+    const positive = flaggedQueries.filter(q => q.rating === 1).length;
+    const negative = flaggedQueries.filter(q => q.rating === 0).length;
     const positiveRate = total > 0 ? ((positive / total) * 100).toFixed(1) : '0';
 
     return { total, positive, negative, positiveRate };
   };
 
-  const stats = getStats();
+  const stats = getOverallStats();
 
   return (
     <motion.div
@@ -155,7 +159,7 @@ export const FlaggedPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-slate-100">Filters</h2>
           </div>
           <div className="flex items-center gap-2">
-            {(ratingFilter !== 'all' || startDate || endDate) && (
+            {ratingFilter !== 'all' && (
               <motion.button
                 onClick={clearFilters}
                 className="text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
@@ -183,7 +187,7 @@ export const FlaggedPage: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
               {/* Rating Filter */}
               <div>
@@ -232,36 +236,12 @@ export const FlaggedPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Start Date */}
+              {/* Date Range Picker */}
               <div>
                 <label className="block text-sm font-medium text-slate-200 mb-2">
-                  Start Date
+                  Date Range
                 </label>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="input w-full pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* End Date */}
-              <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
-                  End Date
-                </label>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="input w-full pl-10"
-                  />
-                </div>
+                <DateRangePicker value={dateRange} onChange={setDateRange} />
               </div>
             </motion.div>
           )}
