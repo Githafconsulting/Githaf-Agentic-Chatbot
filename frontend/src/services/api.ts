@@ -165,8 +165,15 @@ class ApiService {
     return response.data;
   }
 
-  async getFlaggedQueries(): Promise<FlaggedQuery[]> {
-    const response = await this.api.get('/api/v1/analytics/flagged');
+  async getFlaggedQueries(params?: {
+    rating?: number; // 0 = thumbs down, 1 = thumbs up
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+  }): Promise<FlaggedQuery[]> {
+    const response = await this.api.get('/api/v1/analytics/flagged', {
+      params: params || {},
+    });
     return response.data;
   }
 
