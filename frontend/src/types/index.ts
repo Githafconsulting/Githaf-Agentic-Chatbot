@@ -26,8 +26,9 @@ export interface ChatResponse {
 export interface Conversation {
   id: string;
   session_id: string;
-  created_at: string;  // Backend uses created_at, not started_at
-  last_message_at: string;
+  created_at: string;  // When conversation started
+  last_message_at: string;  // When last message was sent
+  ended_at?: string;  // When user closed chatbot window (optional - may be null if still open)
   message_count?: number;  // Optional - may not be returned by backend
   avg_rating?: number;  // Optional - may not be returned by backend
 }
@@ -73,10 +74,12 @@ export interface Analytics {
     total_conversations: number;
     total_messages: number;
     avg_messages_per_conversation: number;
+    avg_conversation_duration_seconds: number;
+    avg_active_chat_time_seconds: number;
   };
   satisfaction_metrics: {
     avg_satisfaction: number;
-    response_rate: number;
+    feedback_rate: number;
     total_feedback: number;
   };
   knowledge_base_metrics: {
@@ -84,15 +87,19 @@ export interface Analytics {
     total_chunks: number;
   };
   trending_queries: Array<{
+    intent: string;
     query: string;
     count: number;
+    sample_queries: string[];
   }>;
   last_updated?: string;
 }
 
 export interface TrendingQuery {
+  intent: string;
   query: string;
   count: number;
+  sample_queries: string[];
 }
 
 export interface KnowledgeBaseStats {
@@ -102,6 +109,7 @@ export interface KnowledgeBaseStats {
 }
 
 export interface FlaggedQuery {
+  feedback_id: string;  // Actual feedback ID for soft-delete operations
   message_id: string;
   conversation_id?: string;
   query: string;  // Backend returns 'query', not 'user_query'
@@ -191,4 +199,163 @@ export interface CountryStats {
   country_name: string;
   count: number;
   percentage: number;
+}
+
+// Learning System Types
+export interface FeedbackPattern {
+  pattern: string;
+  count: number;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  samples: Array<{
+    query: string;
+    comment: string;
+    created_at: string;
+  }>;
+  feedback_ids: string[];
+}
+
+export interface FeedbackInsights {
+  total_negative_feedback: number;
+  feedback_with_comments: number;
+  patterns_identified: number;
+  patterns: FeedbackPattern[];
+  period_days: number;
+  error?: string;
+}
+
+export interface DraftDocument {
+  id: string;
+  title: string;
+  content: string;
+  category?: string;
+  source_type: string;
+  source_feedback_ids?: string[];
+  query_pattern?: string;
+  generated_by_llm: boolean;
+  llm_model?: string;
+  generation_prompt?: string;
+  confidence_score?: number;
+  status: 'pending' | 'approved' | 'rejected' | 'needs_revision';
+  reviewed_by?: string;
+  reviewed_at?: string;
+  review_notes?: string;
+  published_document_id?: string;
+  feedback_count?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface GenerateDraftRequest {
+  feedback_ids: string[];
+  query_pattern?: string;
+  category?: string;
+  additional_context?: string;
+}
+
+export interface GenerateDraftResponse {
+  success: boolean;
+  message: string;
+  draft_id?: string;
+  draft?: DraftDocument;
+}
+
+export interface DraftDocumentReview {
+  status: 'approved' | 'rejected' | 'needs_revision';
+  review_notes?: string;
+}
+
+export interface PendingDraftsResponse {
+  drafts: DraftDocument[];
+  total: number;
+  limit: number;
+  offset: number;
+  error?: string;
+}
+
+// Soft Delete Types
+export interface DeletedItem {
+  item_type: 'conversation' | 'message' | 'feedback' | 'draft';
+  id: string;
+  identifier: string; // Session ID or related ID
+  content?: string;
+  deleted_at: string;
+  deleted_by?: string;
+  created_at: string;
+  deleted_by_email?: string;
+  related_count: number; // Count of related items
+  days_until_permanent: number;
+}
+
+export interface DeletedItemsResponse {
+  items: DeletedItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SoftDeleteResponse {
+  success: boolean;
+  message: string;
+  item_id: string;
+}
+
+export interface RecoverResponse {
+  success: boolean;
+  message: string;
+  item_id: string;
+}
+
+export interface PermanentDeleteResponse {
+  success: boolean;
+  message: string;
+  item_id: string;
+}
+
+export interface UpdateConversationRequest {
+  session_id?: string;
+}
+
+export interface UpdateMessageRequest {
+  content: string;
+}
+
+export interface UpdateFeedbackRequest {
+  rating?: number;
+  comment?: string;
+}
+
+// Chatbot Configuration Types
+export interface ChatbotConfig {
+  id?: string;
+  intentPatterns: Record<string, string[]>;
+  intentEnabled: Record<string, boolean>;
+  patternConfidenceThreshold: number;
+  llmFallbackEnabled: boolean;
+  llmConfidenceThreshold: number;
+  ragTopK: number;
+  ragSimilarityThreshold: number;
+  chunkSize: number;
+  chunkOverlap: number;
+  llmModel: string;
+  llmTemperature: number;
+  llmMaxTokens: number;
+  topicKeywords: Record<string, string[]>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ChatbotConfigUpdate {
+  intentPatterns?: Record<string, string[]>;
+  intentEnabled?: Record<string, boolean>;
+  patternConfidenceThreshold?: number;
+  llmFallbackEnabled?: boolean;
+  llmConfidenceThreshold?: number;
+  ragTopK?: number;
+  ragSimilarityThreshold?: number;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  llmModel?: string;
+  llmTemperature?: number;
+  llmMaxTokens?: number;
+  topicKeywords?: Record<string, string[]>;
 }

@@ -23,6 +23,8 @@
     "knowledgeBase": "Knowledge Base",
     "conversations": "Conversations",
     "flaggedQueries": "Flagged Queries",
+    "learning": "Learning",
+    "trash": "Trash",
     "teamMembers": "Team Members",
     "widgetSettings": "Widget Settings",
     "systemSettings": "System Settings",
@@ -105,7 +107,20 @@
     "helpful": "Helpful",
     "notHelpful": "Not helpful",
     "errorMessage": "Sorry, I encountered an error. Please try again.",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "feedbackThankYou": "Thank you for your feedback!",
+    "feedbackThankYouDetailed": "Thank you! Your feedback helps us improve.",
+    "feedbackError": "Failed to submit feedback. Please try again.",
+    "feedbackModal": {
+      "title": "Tell us why",
+      "subtitle": "Help us improve our responses",
+      "label": "What went wrong with this response?",
+      "optional": "optional",
+      "placeholder": "The response was inaccurate, unhelpful, off-topic...",
+      "characters": "characters",
+      "cancel": "Cancel",
+      "submit": "Submit Feedback"
+    }
   },
   "widget": {
     "title": "Widget Settings",

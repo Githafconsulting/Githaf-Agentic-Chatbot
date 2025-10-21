@@ -103,6 +103,14 @@ async def startup_event():
         # logger.error(f"✗ Database connection error: {e}")
         logger.error(f"[ERROR] Database connection error: {e}")
 
+    # Initialize semantic intent matcher (precompute embeddings)
+    try:
+        from app.services.semantic_intent_matcher import initialize_intent_embeddings
+        await initialize_intent_embeddings()
+        logger.info("[OK] Semantic intent matcher initialized")
+    except Exception as e:
+        logger.warning(f"[WARN] Semantic matcher initialization failed: {e}")
+
     # Start background scheduler (Phase 3: Self-Improvement Loop)
     try:
         start_scheduler()

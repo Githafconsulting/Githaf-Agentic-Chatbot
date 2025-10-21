@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flag, AlertCircle, User, Bot, ThumbsDown, ThumbsUp, MessageSquare, Hash, Clock, Lightbulb, Info, Filter, X } from 'lucide-react';
+import { Flag, AlertCircle, User, Bot, ThumbsDown, ThumbsUp, MessageSquare, Hash, Clock, Lightbulb, Info, Filter, X, Edit, Trash2, Loader2 } from 'lucide-react';
 import { apiService } from '../../services/api';
-import type { FlaggedQuery } from '../../types';
+import { type FlaggedQuery } from '../../types';
 import { staggerContainer, staggerItem } from '../../utils/animations';
 import { DateRangePicker } from '../../components/DateRangePicker';
 
@@ -13,6 +13,8 @@ export const FlaggedPage: React.FC = () => {
   const [filteredQueries, setFilteredQueries] = useState<FlaggedQuery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [satisfactionScore, setSatisfactionScore] = useState<number>(0);
 
   // Filter states
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
@@ -22,8 +24,15 @@ export const FlaggedPage: React.FC = () => {
   });
   const [showFilters, setShowFilters] = useState(true);
 
+  // Edit modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<FlaggedQuery | null>(null);
+  const [editedRating, setEditedRating] = useState<number>(0);
+  const [editedComment, setEditedComment] = useState('');
+
   useEffect(() => {
     loadFlaggedQueries();
+    loadSatisfactionScore();
   }, []);
 
   useEffect(() => {
@@ -59,6 +68,20 @@ export const FlaggedPage: React.FC = () => {
     }
   };
 
+  const loadSatisfactionScore = async () => {
+    try {
+      console.log('Loading satisfaction score from analytics...');
+      const analytics = await apiService.getAnalytics();
+      const avgSatisfaction = analytics?.satisfaction_metrics?.avg_satisfaction || 0;
+      setSatisfactionScore(avgSatisfaction * 100);
+      console.log('Satisfaction score loaded:', avgSatisfaction * 100);
+    } catch (err: any) {
+      console.error('Failed to load satisfaction score:', err);
+      // Fallback to 0 if analytics fails
+      setSatisfactionScore(0);
+    }
+  };
+
   const applyFilters = () => {
     let filtered = [...flaggedQueries];
 
@@ -91,12 +114,62 @@ export const FlaggedPage: React.FC = () => {
     });
   };
 
+  const handleEditFeedback = (feedback: FlaggedQuery) => {
+    setSelectedFeedback(feedback);
+    setEditedRating(feedback.rating);
+    setEditedComment(feedback.comment || '');
+    setShowEditModal(true);
+  };
+
+  const submitEdit = async () => {
+    if (!selectedFeedback) return;
+
+    try {
+      setProcessingId(selectedFeedback.feedback_id);
+
+      // Use the feedback_id for update operations
+      await apiService.updateFeedback(selectedFeedback.feedback_id, {
+        rating: editedRating,
+        comment: editedComment || undefined,
+      });
+
+      await loadFlaggedQueries();
+      await loadSatisfactionScore(); // Reload satisfaction score after update
+      setShowEditModal(false);
+      setSelectedFeedback(null);
+      setEditedRating(0);
+      setEditedComment('');
+      alert('Feedback updated successfully!');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to update feedback');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!confirm('Are you sure you want to soft delete this feedback? It can be recovered from the Deleted Items page within 30 days.')) return;
+
+    try {
+      setProcessingId(feedbackId);
+      await apiService.softDeleteFeedback(feedbackId);
+      await loadFlaggedQueries();
+      await loadSatisfactionScore(); // Reload satisfaction score after deletion
+      alert('Feedback soft-deleted successfully!');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete feedback');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   // Calculate overall stats from ALL feedback (not filtered)
   const getOverallStats = () => {
     const total = flaggedQueries.length;
     const positive = flaggedQueries.filter(q => q.rating === 1).length;
     const negative = flaggedQueries.filter(q => q.rating === 0).length;
-    const positiveRate = total > 0 ? ((positive / total) * 100).toFixed(1) : '0';
+    // Use satisfaction score from analytics (matches Analytics page calculation)
+    const positiveRate = satisfactionScore.toFixed(1);
 
     return { total, positive, negative, positiveRate };
   };
@@ -113,15 +186,12 @@ export const FlaggedPage: React.FC = () => {
       {/* Header */}
       <motion.div variants={staggerItem} className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
-            <MessageSquare className="text-white" size={28} />
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shadow-lg">
+            <Flag className="text-white" size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-100">User Feedback</h1>
-            <p className="text-slate-300 mt-1 flex items-center gap-2">
-              <Filter size={16} />
-              Review all user feedback and ratings
-            </p>
+            <h1 className="text-2xl font-bold text-slate-50">User Feedback</h1>
+            <p className="text-slate-400 text-sm mt-0.5">Review all user feedback and ratings</p>
           </div>
         </div>
 
@@ -199,46 +269,21 @@ export const FlaggedPage: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-200 mb-2">
                   Rating Type
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <motion.button
-                    onClick={() => setRatingFilter('all')}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                      ratingFilter === 'all'
-                        ? 'border-blue-500 bg-blue-500/20 text-blue-300'
-                        : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    All
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setRatingFilter('positive')}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all text-sm font-medium flex items-center justify-center gap-1 ${
-                      ratingFilter === 'positive'
-                        ? 'border-green-500 bg-green-500/20 text-green-300'
-                        : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <ThumbsUp size={14} />
-                    Positive
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setRatingFilter('negative')}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all text-sm font-medium flex items-center justify-center gap-1 ${
-                      ratingFilter === 'negative'
-                        ? 'border-red-500 bg-red-500/20 text-red-300'
-                        : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <ThumbsDown size={14} />
-                    Negative
-                  </motion.button>
-                </div>
+                <select
+                  value={ratingFilter}
+                  onChange={(e) => setRatingFilter(e.target.value as RatingFilter)}
+                  className={`w-full px-4 py-2.5 bg-slate-800 border-2 rounded-xl text-slate-200 focus:outline-none focus:ring-2 hover:bg-slate-700 transition-all ${
+                    ratingFilter === 'all'
+                      ? 'border-blue-500 focus:ring-blue-500'
+                      : ratingFilter === 'positive'
+                      ? 'border-green-500 focus:ring-green-500'
+                      : 'border-red-500 focus:ring-red-500'
+                  }`}
+                >
+                  <option value="all">All Feedback</option>
+                  <option value="positive">👍 Positive</option>
+                  <option value="negative">👎 Negative</option>
+                </select>
               </div>
 
               {/* Date Range Picker */}
@@ -333,16 +378,43 @@ export const FlaggedPage: React.FC = () => {
                             <Clock size={14} />
                             {new Date(query.created_at).toLocaleString()}
                           </span>
-                          <span
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 ${
-                              isPositive
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}
-                          >
-                            {isPositive ? <ThumbsUp size={14} /> : <ThumbsDown size={14} />}
-                            {isPositive ? 'Helpful' : 'Not Helpful'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 ${
+                                isPositive
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              {isPositive ? <ThumbsUp size={14} /> : <ThumbsDown size={14} />}
+                              {isPositive ? 'Helpful' : 'Not Helpful'}
+                            </span>
+                            {/* Action Buttons */}
+                            <motion.button
+                              onClick={() => handleEditFeedback(query)}
+                              disabled={processingId === query.feedback_id}
+                              className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Edit feedback"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              {processingId === query.feedback_id ? (
+                                <Loader2 className="animate-spin" size={18} />
+                              ) : (
+                                <Edit size={18} />
+                              )}
+                            </motion.button>
+                            <motion.button
+                              onClick={() => handleDeleteFeedback(query.feedback_id)}
+                              disabled={processingId === query.feedback_id}
+                              className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete feedback"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <Trash2 size={18} />
+                            </motion.button>
+                          </div>
                         </div>
 
                         {/* User Query */}
@@ -443,6 +515,137 @@ export const FlaggedPage: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Feedback Modal */}
+      <AnimatePresence>
+        {showEditModal && selectedFeedback && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={() => !processingId && setShowEditModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-800 rounded-2xl p-8 max-w-2xl w-full shadow-strong max-h-[90vh] overflow-y-auto"
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                    <Edit className="text-white" size={24} />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-slate-50">Edit Feedback</h3>
+                </div>
+
+                {/* Edit Form */}
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Rating
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.button
+                        onClick={() => setEditedRating(1)}
+                        className={`px-4 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2 ${
+                          editedRating === 1
+                            ? 'border-green-500 bg-green-500/20 text-green-300'
+                            : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <ThumbsUp size={20} />
+                        Helpful
+                      </motion.button>
+                      <motion.button
+                        onClick={() => setEditedRating(0)}
+                        className={`px-4 py-3 rounded-xl border-2 transition-all font-medium flex items-center justify-center gap-2 ${
+                          editedRating === 0
+                            ? 'border-red-500 bg-red-500/20 text-red-300'
+                            : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <ThumbsDown size={20} />
+                        Not Helpful
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-200 mb-2">
+                      Comment (optional)
+                    </label>
+                    <textarea
+                      value={editedComment}
+                      onChange={(e) => setEditedComment(e.target.value)}
+                      placeholder="User feedback comment..."
+                      className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                      rows={4}
+                      disabled={!!processingId}
+                    />
+                  </div>
+
+                  {/* Preview */}
+                  <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-slate-300 mb-2">Original Query</h4>
+                    <p className="text-sm text-slate-400">{selectedFeedback.query}</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <motion.button
+                    onClick={submitEdit}
+                    disabled={!!processingId}
+                    className="btn-primary flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={!processingId ? { scale: 1.02 } : {}}
+                    whileTap={!processingId ? { scale: 0.98 } : {}}
+                  >
+                    {processingId ? (
+                      <>
+                        <Loader2 className="animate-spin" size={20} />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <ThumbsUp size={20} />
+                        Save Changes
+                      </>
+                    )}
+                  </motion.button>
+                  <motion.button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedFeedback(null);
+                      setEditedRating(0);
+                      setEditedComment('');
+                    }}
+                    disabled={!!processingId}
+                    className="btn-outline flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl disabled:opacity-50"
+                    whileHover={!processingId ? { scale: 1.02 } : {}}
+                    whileTap={!processingId ? { scale: 0.98 } : {}}
+                  >
+                    <X size={20} />
+                    Cancel
+                  </motion.button>
+                </div>
+
+                {/* Metadata Footer */}
+                <div className="mt-6 pt-6 border-t border-slate-700 text-xs text-slate-400 space-y-1">
+                  <p>Feedback ID: {selectedFeedback.message_id.substring(0, 16)}...</p>
+                  <p>Created: {new Date(selectedFeedback.created_at).toLocaleString()}</p>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>

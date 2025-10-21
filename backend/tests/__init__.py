@@ -1,3 +1,3 @@
 """
-Tests package for Githaf Chatbot Backend
+Test suite for Agentic Chatbot Backend
 """

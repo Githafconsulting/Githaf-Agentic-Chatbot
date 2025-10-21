@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Trash2, Shield, User as UserIcon, Mail } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, Mail, Users } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface User {
@@ -90,9 +90,14 @@ export const UsersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-50">Team Members</h1>
-          <p className="text-slate-300 mt-1">Manage dashboard users and permissions</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
+            <Users className="text-white" size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-50">Team Members</h1>
+            <p className="text-slate-400 text-sm mt-0.5">Manage dashboard users and permissions</p>
+          </div>
         </div>
 
         <button

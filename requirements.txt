@@ -31,6 +31,9 @@ python-multipart==0.0.9
 # Rate Limiting
 slowapi==0.1.9
 
+# Server-Sent Events (for real-time widget updates)
+sse-starlette==1.6.5
+
 # Scheduling (Phase 3: Self-Improvement Loop)
 apscheduler==3.10.4
 
@@ -45,3 +48,9 @@ pytest-benchmark==4.0.0
 pytest-mock==3.12.0
 httpx==0.25.2  # For async HTTP testing
 faker==22.6.0  # For test data generation
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0

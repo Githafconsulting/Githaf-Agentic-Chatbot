@@ -5,6 +5,7 @@ Includes intent classification for conversational queries
 """
 from typing import List, Dict, Optional, Any
 import random
+import time
 from app.services.embedding_service import get_embedding
 from app.services.vectorstore_service import similarity_search
 from app.services.llm_service import generate_response
@@ -30,6 +31,8 @@ from app.utils.prompts import (
 )
 from app.core.config import settings
 from app.utils.logger import get_logger
+# Phase 6: Metrics & Observability
+from app.services.metrics_service import MetricsContext, record_metric, MetricType
 
 logger = get_logger(__name__)
 
@@ -192,13 +195,28 @@ async def get_conversational_response(
     else:
         response_text = UNCLEAR_QUERY_RESPONSE
 
-    return {
+    # Translate conversational response if enabled (Phase 7: Translation)
+    from app.services.translation_service import translate_ai_response
+    response_text = await translate_ai_response(response_text, session_id=session_id)
+
+    result = {
         "response": response_text,
         "sources": [],
         "context_found": False,
         "intent": intent.value,
         "conversational": True
     }
+
+    # Add dialog state if available (NEW)
+    if session_id:
+        try:
+            from app.services.dialog_state_service import get_conversation_context
+            context = await get_conversation_context(session_id)
+            result["dialog_state"] = context.current_state.value
+        except:
+            pass
+
+    return result
 
 
 async def get_rag_response(
@@ -220,23 +238,79 @@ async def get_rag_response(
         Dict containing response, sources, and validation metadata
     """
     try:
+        # Track total latency (Phase 6: Metrics)
+        start_time = time.time()
+
         logger.info(f"Processing query: {query[:100]}...")
 
         # 0. Preprocess query (fix misspellings, normalize company name)
         processed_query = preprocess_query(query)
 
-        # 1. Classify intent using hybrid approach (patterns + LLM fallback)
-        intent, confidence = await classify_intent_hybrid(processed_query)
+        # 1. Classify intent using hybrid approach WITH SESSION CONTEXT (NEW)
+        async with MetricsContext("intent", session_id=session_id) as ctx:
+            intent, confidence = await classify_intent_hybrid(processed_query, session_id=session_id)
+            ctx.add_context({"intent": intent.value, "confidence": confidence})
+
         metadata = get_intent_metadata(intent, query)
         logger.info(f"Detected intent: {intent.value} (confidence: {confidence:.2f}) | Metadata: {metadata}")
+
+        # 1.5 Update dialog state and check for state-specific responses (NEW)
+        if session_id:
+            try:
+                from app.services.dialog_state_service import (
+                    get_conversation_context,
+                    update_conversation_state,
+                    determine_state_from_intent,
+                    get_contextual_response_for_state
+                )
+
+                # Get current context
+                context = await get_conversation_context(session_id)
+
+                # Determine new state based on intent and context
+                new_state = determine_state_from_intent(intent.value, processed_query, context)
+
+                # Check if this state has a specific response (e.g., AWAITING_QUESTION)
+                state_response = get_contextual_response_for_state(new_state, processed_query)
+
+                if state_response:
+                    # Update state and return state-specific response
+                    await update_conversation_state(
+                        session_id,
+                        new_state,
+                        intent=intent.value
+                    )
+
+                    logger.info(f"Returning state-specific response for state: {new_state.value}")
+                    return {
+                        "response": state_response,
+                        "sources": [],
+                        "context_found": False,
+                        "intent": intent.value,
+                        "conversational": True,
+                        "dialog_state": new_state.value  # NEW: Include state in response
+                    }
+
+                # Update state for normal processing
+                await update_conversation_state(
+                    session_id,
+                    new_state,
+                    intent=intent.value,
+                    topic=None  # Could extract topic from query in future
+                )
+
+            except Exception as e:
+                logger.warning(f"Error updating dialog state: {e}")
+                # Continue with normal processing
 
         # 2. Handle conversational intents (fast path - no RAG needed)
         if not should_use_rag(intent):
             logger.info(f"Using conversational response for intent: {intent.value}")
             return await get_conversational_response(intent, processed_query, session_id)
 
-        # 3. Check if planning needed (Phase 2: Planning Layer)
-        from app.services.planning_service import needs_planning, create_plan, execute_plan
+        # 3. Check if planning needed (Phase 2: Planning Layer + Phase 2.5: Reflexive Planning)
+        from app.services.planning_service import needs_planning, create_plan
+        from app.services.meta_planner import execute_with_replanning
 
         if await needs_planning(processed_query, intent):
             logger.info("Complex query detected, using planning approach")
@@ -248,8 +322,8 @@ async def get_rag_response(
                 context={"session_id": session_id}
             )
 
-            # Execute plan
-            plan_result = await execute_plan(plan, session_id)
+            # Execute plan with reflexive replanning (Phase 2.5)
+            plan_result = await execute_with_replanning(plan, session_id, max_replans=2)
 
             # Validate final response
             from app.services.validation_service import validate_response
@@ -277,6 +351,7 @@ async def get_rag_response(
             }
 
         # 4. Enrich query with semantic memory (Phase 4: Advanced Memory)
+        memories = []
         if session_id:
             try:
                 from app.services.memory_service import retrieve_semantic_memory
@@ -284,16 +359,17 @@ async def get_rag_response(
                 memories = await retrieve_semantic_memory(session_id, query=processed_query, limit=3)
                 if memories:
                     logger.info(f"Retrieved {len(memories)} relevant memories for query enrichment")
-                    # Add memory context to query processing (implicit enrichment)
-                    # Memories will be used in step 11 when building the LLM prompt
             except Exception as e:
                 logger.warning(f"Failed to retrieve semantic memory: {e}")
+                memories = []
 
         # 5. Continue with RAG pipeline for simple questions
         logger.info("Using RAG pipeline for question/unknown intent")
 
-        # 6. Embed the processed query
-        query_embedding = await get_embedding(processed_query)
+        # 6. Embed the processed query (Phase 6: Track embedding latency)
+        async with MetricsContext("embedding", session_id=session_id) as ctx:
+            query_embedding = await get_embedding(processed_query)
+
         logger.debug("Query embedded successfully")
 
         # 6. Adjust threshold for factual queries (hybrid search)
@@ -318,11 +394,16 @@ async def get_rag_response(
         # 7. Similarity search (retrieve more candidates for factual queries to allow re-ranking)
         top_k = settings.RAG_TOP_K * 2 if is_factual_query else settings.RAG_TOP_K
         logger.info(f"Calling similarity_search with top_k={top_k}, threshold={threshold}")
-        relevant_docs = await similarity_search(
-            query_embedding,
-            top_k=top_k,
-            threshold=threshold
-        )
+
+        # Phase 6: Track search latency
+        async with MetricsContext("search", session_id=session_id) as ctx:
+            relevant_docs = await similarity_search(
+                query_embedding,
+                top_k=top_k,
+                threshold=threshold
+            )
+            ctx.add_context({"docs_found": len(relevant_docs) if relevant_docs else 0})
+
         logger.info(f"Similarity search returned {len(relevant_docs) if relevant_docs else 0} documents")
 
         # 8. Re-rank results for factual queries (boost documents with actual facts)
@@ -394,30 +475,70 @@ async def get_rag_response(
             history = await get_conversation_history(session_id, limit=5)
             history_text = await format_history_for_llm(history)
 
-        # 12. Build prompt (use original query so user sees their question)
-        prompt = RAG_SYSTEM_PROMPT.format(
-            context=context,
-            history=history_text,
-            query=query  # Use original query in prompt for natural response
-        )
+        # 11.5. Format semantic memories for prompt (Phase 4: Advanced Memory)
+        memory_text = ""
+        if memories and len(memories) > 0:
+            memory_parts = []
+            for i, mem in enumerate(memories, 1):
+                content = mem.get("content", "")
+                category = mem.get("category", "context")
+                memory_parts.append(f"[Fact {i}] ({category}) {content}")
 
-        # 13. Generate response using LLM
-        response_text = await generate_response(prompt)
+            memory_text = "\n".join(memory_parts)
+            logger.info(f"Including {len(memories)} semantic facts in prompt")
+
+        # 12. Build prompt (use original query so user sees their question)
+        if memory_text:
+            # Include semantic memory in prompt for personalization
+            prompt = f"""{RAG_SYSTEM_PROMPT.format(
+                context=context,
+                history=history_text,
+                query=query
+            )}
+
+IMPORTANT - User Facts from Earlier in Conversation:
+{memory_text}
+
+Use these facts to personalize your response. For example:
+- If user mentioned their industry, reference it naturally
+- If user mentioned their company size, consider it in recommendations
+- If user stated preferences, respect them
+- Make the response feel like you remember the conversation context
+
+Generate your personalized response now:"""
+        else:
+            # No memories, use standard prompt
+            prompt = RAG_SYSTEM_PROMPT.format(
+                context=context,
+                history=history_text,
+                query=query  # Use original query in prompt for natural response
+            )
+
+        # 13. Generate response using LLM (Phase 6: Track LLM latency)
+        async with MetricsContext("llm", session_id=session_id) as ctx:
+            response_text = await generate_response(prompt)
 
         logger.info("RAG response generated successfully")
 
-        # 14. VALIDATE RESPONSE (Phase 1: Observation Layer)
+        # 14. VALIDATE RESPONSE (Phase 1: Observation Layer + Phase 6: Track validation latency)
         from app.services.validation_service import validate_response, retry_with_adjustment
 
-        validation = await validate_response(
-            query=query,
-            response=response_text,
-            sources=sources
-        )
+        async with MetricsContext("validation", session_id=session_id) as ctx:
+            validation = await validate_response(
+                query=query,
+                response=response_text,
+                sources=sources
+            )
+            ctx.add_context({"is_valid": validation["is_valid"], "confidence": validation["confidence"]})
 
         # 15. RETRY IF NEEDED (Phase 1: Observation Layer)
         retry_count = 0
         while not validation["is_valid"] and validation["retry_recommended"] and retry_count < max_retries:
+            # Check if it's a rate limit error - don't retry in that case
+            if validation.get("error_type") == "rate_limit":
+                logger.warning("Rate limit detected - skipping retry to avoid wasting tokens")
+                break
+
             retry_count += 1
             logger.warning(f"Response validation failed, retry {retry_count}/{max_retries}")
             logger.warning(f"Issues: {validation['issues']}")
@@ -447,8 +568,26 @@ async def get_rag_response(
         else:
             logger.warning(f"Final response still has issues after {retry_count} retries: {validation['issues']}")
 
-        # 16. Return with validation metadata
-        return {
+        # 16. Record aggregate metrics (Phase 6: Metrics & Observability)
+        total_latency_ms = (time.time() - start_time) * 1000
+        await record_metric(MetricType.LATENCY_TOTAL, total_latency_ms, "ms", {
+            "intent": intent.value,
+            "session_id": session_id or "anonymous",
+            "retry_count": retry_count,
+            "context_found": True
+        })
+        await record_metric(MetricType.QUERY_COUNT, 1, "count", {"intent": intent.value})
+        await record_metric(MetricType.INTENT_CONFIDENCE, confidence, "score", {})
+        await record_metric(MetricType.VALIDATION_CONFIDENCE, validation["confidence"], "score", {})
+
+        logger.info(f"Total query latency: {total_latency_ms:.2f}ms")
+
+        # 16.5. Translate AI response if enabled (Phase 7: Translation)
+        from app.services.translation_service import translate_ai_response
+        response_text = await translate_ai_response(response_text, session_id=session_id)
+
+        # 17. Return with validation metadata
+        result = {
             "response": response_text,
             "sources": sources,
             "context_found": True,
@@ -461,6 +600,17 @@ async def get_rag_response(
                 "is_valid": validation["is_valid"]
             }
         }
+
+        # Add dialog state if available (NEW)
+        if session_id:
+            try:
+                from app.services.dialog_state_service import get_conversation_context
+                context = await get_conversation_context(session_id)
+                result["dialog_state"] = context.current_state.value
+            except:
+                pass
+
+        return result
 
     except Exception as e:
         logger.error(f"Error in RAG pipeline: {e}")

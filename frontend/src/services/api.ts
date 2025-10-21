@@ -11,6 +11,20 @@ import type {
   DailyStats,
   CountryStats,
   SystemSettings,
+  FeedbackInsights,
+  GenerateDraftRequest,
+  GenerateDraftResponse,
+  PendingDraftsResponse,
+  DraftDocumentReview,
+  DeletedItemsResponse,
+  SoftDeleteResponse,
+  RecoverResponse,
+  PermanentDeleteResponse,
+  UpdateConversationRequest,
+  UpdateMessageRequest,
+  UpdateFeedbackRequest,
+  ChatbotConfig,
+  ChatbotConfigUpdate,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -70,6 +84,12 @@ class ApiService {
       session_id: sessionId,
     });
     return response.data;
+  }
+
+  async endConversation(sessionId: string): Promise<void> {
+    await this.api.post('/api/v1/conversations/end', {
+      session_id: sessionId,
+    });
   }
 
   async submitFeedback(feedback: Feedback): Promise<void> {
@@ -140,6 +160,20 @@ class ApiService {
       },
     });
     // Backend returns { success: true, document: {...} }
+    return response.data.document || response.data;
+  }
+
+  async getDocumentContent(id: string): Promise<string> {
+    const response = await this.api.get(`/api/v1/documents/${id}/content`);
+    return response.data.content;
+  }
+
+  async updateDocument(id: string, updates: {
+    title?: string;
+    content?: string;
+    category?: string;
+  }): Promise<Document> {
+    const response = await this.api.put(`/api/v1/documents/${id}`, updates);
     return response.data.document || response.data;
   }
 
@@ -226,6 +260,189 @@ class ApiService {
 
   async updateSystemSettings(settings: SystemSettings): Promise<SystemSettings> {
     const response = await this.api.put('/api/v1/settings/', settings);
+    return response.data;
+  }
+
+  // Learning System APIs
+  async getFeedbackInsights(startDate?: string, endDate?: string): Promise<FeedbackInsights> {
+    const response = await this.api.get('/api/v1/learning/insights', {
+      params: startDate && endDate ? { start_date: startDate, end_date: endDate } : {},
+    });
+    return response.data;
+  }
+
+  async generateDraft(request: GenerateDraftRequest): Promise<GenerateDraftResponse> {
+    const response = await this.api.post('/api/v1/learning/generate-draft', request);
+    return response.data;
+  }
+
+  async getPendingDrafts(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<PendingDraftsResponse> {
+    const response = await this.api.get('/api/v1/learning/drafts', {
+      params: params || { status: 'pending', limit: 20, offset: 0 },
+    });
+    return response.data;
+  }
+
+  async approveDraft(draftId: string, review: DraftDocumentReview): Promise<any> {
+    const response = await this.api.post(`/api/v1/learning/drafts/${draftId}/approve`, review);
+    return response.data;
+  }
+
+  async rejectDraft(draftId: string, review: DraftDocumentReview): Promise<any> {
+    const response = await this.api.post(`/api/v1/learning/drafts/${draftId}/reject`, review);
+    return response.data;
+  }
+
+  async updateDraft(draftId: string, updates: {
+    title?: string;
+    content?: string;
+    category?: string;
+  }): Promise<any> {
+    const response = await this.api.put(`/api/v1/learning/drafts/${draftId}`, updates);
+    return response.data;
+  }
+
+  async deleteDraft(draftId: string): Promise<any> {
+    const response = await this.api.delete(`/api/v1/learning/drafts/${draftId}`);
+    return response.data;
+  }
+
+  async triggerLearningJob(): Promise<any> {
+    const response = await this.api.post('/api/v1/learning/trigger-job');
+    return response.data;
+  }
+
+  // Soft Delete APIs
+  // Soft Delete Operations
+  async softDeleteConversation(conversationId: string): Promise<SoftDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/conversation/${conversationId}`);
+    return response.data;
+  }
+
+  async softDeleteMessage(messageId: string): Promise<SoftDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/message/${messageId}`);
+    return response.data;
+  }
+
+  async softDeleteFeedback(feedbackId: string): Promise<SoftDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/feedback/${feedbackId}`);
+    return response.data;
+  }
+
+  async softDeleteDraft(draftId: string): Promise<SoftDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/draft/${draftId}`);
+    return response.data;
+  }
+
+  // Recovery Operations
+  async recoverConversation(conversationId: string): Promise<RecoverResponse> {
+    const response = await this.api.post(`/api/v1/soft-delete/conversation/${conversationId}/recover`);
+    return response.data;
+  }
+
+  async recoverMessage(messageId: string): Promise<RecoverResponse> {
+    const response = await this.api.post(`/api/v1/soft-delete/message/${messageId}/recover`);
+    return response.data;
+  }
+
+  async recoverFeedback(feedbackId: string): Promise<RecoverResponse> {
+    const response = await this.api.post(`/api/v1/soft-delete/feedback/${feedbackId}/recover`);
+    return response.data;
+  }
+
+  async recoverDraft(draftId: string): Promise<RecoverResponse> {
+    const response = await this.api.post(`/api/v1/soft-delete/draft/${draftId}/recover`);
+    return response.data;
+  }
+
+  // Permanent Delete Operations
+  async permanentDeleteConversation(conversationId: string): Promise<PermanentDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/conversation/${conversationId}/permanent?confirm=true`);
+    return response.data;
+  }
+
+  async permanentDeleteMessage(messageId: string): Promise<PermanentDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/message/${messageId}/permanent?confirm=true`);
+    return response.data;
+  }
+
+  async permanentDeleteFeedback(feedbackId: string): Promise<PermanentDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/feedback/${feedbackId}/permanent?confirm=true`);
+    return response.data;
+  }
+
+  async permanentDeleteDraft(draftId: string): Promise<PermanentDeleteResponse> {
+    const response = await this.api.delete(`/api/v1/soft-delete/draft/${draftId}/permanent?confirm=true`);
+    return response.data;
+  }
+
+  // Update Operations
+  async updateConversation(conversationId: string, data: UpdateConversationRequest): Promise<any> {
+    const response = await this.api.put(`/api/v1/soft-delete/conversation/${conversationId}`, data);
+    return response.data;
+  }
+
+  async updateMessage(messageId: string, data: UpdateMessageRequest): Promise<any> {
+    const response = await this.api.put(`/api/v1/soft-delete/message/${messageId}`, data);
+    return response.data;
+  }
+
+  async updateFeedback(feedbackId: string, data: UpdateFeedbackRequest): Promise<any> {
+    const response = await this.api.put(`/api/v1/soft-delete/feedback/${feedbackId}`, data);
+    return response.data;
+  }
+
+  // Get Deleted Items
+  async getDeletedItems(params?: {
+    item_type?: 'conversation' | 'message' | 'feedback';
+    limit?: number;
+    offset?: number;
+  }): Promise<DeletedItemsResponse> {
+    const response = await this.api.get('/api/v1/soft-delete/items', {
+      params: params || { limit: 100, offset: 0 },
+    });
+    return response.data;
+  }
+
+  // Manual Cleanup
+  async triggerCleanup(): Promise<any> {
+    const response = await this.api.post('/api/v1/soft-delete/cleanup');
+    return response.data;
+  }
+
+  // Widget Settings APIs (Public endpoint for get, Protected for update)
+  async getWidgetSettings(): Promise<any> {
+    const response = await this.api.get('/api/v1/widget/');
+    return response.data;
+  }
+
+  async updateWidgetSettings(settings: any): Promise<any> {
+    const response = await this.api.put('/api/v1/widget/', settings);
+    return response.data;
+  }
+
+  async resetWidgetSettings(): Promise<any> {
+    const response = await this.api.post('/api/v1/widget/reset');
+    return response.data;
+  }
+
+  // Chatbot Configuration APIs
+  async getChatbotConfig(): Promise<ChatbotConfig> {
+    const response = await this.api.get('/api/v1/chatbot-config/');
+    return response.data;
+  }
+
+  async updateChatbotConfig(updates: ChatbotConfigUpdate): Promise<any> {
+    const response = await this.api.put('/api/v1/chatbot-config/', updates);
+    return response.data;
+  }
+
+  async resetChatbotConfig(): Promise<any> {
+    const response = await this.api.post('/api/v1/chatbot-config/reset');
     return response.data;
   }
 }

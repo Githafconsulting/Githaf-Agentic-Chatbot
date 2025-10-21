@@ -80,7 +80,11 @@ export const Home: React.FC = () => {
         >
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Bot size={32} className="text-blue-400" />
+              <img
+                src="/githaf_logo.png"
+                alt="Githaf Logo"
+                className="h-10 w-auto object-contain"
+              />
               <span className="text-xl font-bold text-white">Githaf AI Assistant</span>
             </div>
             <div className="flex items-center gap-2">
@@ -116,6 +120,29 @@ export const Home: React.FC = () => {
                 AI Support Assistant
               </span>
             </motion.h1>
+
+            {/* Chatbot Logo */}
+            <motion.div
+              variants={staggerItem}
+              className="flex justify-center mb-6"
+            >
+              <motion.div
+                className="relative w-24 h-24 sm:w-28 sm:h-28"
+                animate={{
+                  y: [0, -15, 0],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-cyan-500 rounded-3xl blur-xl opacity-50 animate-pulse"></div>
+                <div className="relative w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl border-4 border-blue-400/30">
+                  <Bot size={48} className="text-white" />
+                </div>
+              </motion.div>
+            </motion.div>
 
             {/* Subtitle */}
             <motion.p

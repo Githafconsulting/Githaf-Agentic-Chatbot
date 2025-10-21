@@ -179,12 +179,12 @@ export const SystemSettingsPage: React.FC = () => {
 
       <motion.div variants={staggerItem} className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
-            <SettingsIcon className="text-white" size={28} />
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg">
+            <SettingsIcon className="text-white" size={24} />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-slate-50">System Settings</h1>
-            <p className="text-slate-300 mt-1">
+            <h1 className="text-2xl font-bold text-slate-50">System Settings</h1>
+            <p className="text-slate-400 text-sm mt-0.5">
               Configure themes, languages, analytics, and privacy
             </p>
           </div>

@@ -237,7 +237,7 @@ async def get_ab_test_results(test_id: str) -> Dict:
         # Calculate metrics
         def calculate_metrics(ratings: List[int]) -> Dict:
             if not ratings:
-                return {"sample_size": 0, "satisfaction": 0.0, "response_rate": 0.0}
+                return {"sample_size": 0, "satisfaction": 0.0, "feedback_rate": 0.0}
 
             return {
                 "sample_size": len(ratings),

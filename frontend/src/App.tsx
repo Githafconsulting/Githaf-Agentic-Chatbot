@@ -13,6 +13,10 @@ import { FlaggedPage } from './pages/admin/Flagged';
 import { UsersPage } from './pages/admin/Users';
 import { WidgetSettingsPage } from './pages/admin/WidgetSettings';
 import { SystemSettingsPage } from './pages/admin/SystemSettings';
+import { DeletedItemsPage } from './pages/admin/DeletedItems';
+import { LearningPage } from './pages/admin/Learning';
+import { ChatbotSettings } from './pages/admin/ChatbotSettings';
+import { EmbedPage } from './pages/Embed';
 import './i18n'; // Initialize i18n
 
 function App() {
@@ -25,6 +29,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/embed" element={<EmbedPage />} />
 
           {/* Admin Routes */}
           <Route
@@ -39,8 +44,11 @@ function App() {
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="conversations" element={<ConversationsPage />} />
             <Route path="flagged" element={<FlaggedPage />} />
+            <Route path="learning" element={<LearningPage />} />
+            <Route path="deleted" element={<DeletedItemsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="widget" element={<WidgetSettingsPage />} />
+            <Route path="chatbot" element={<ChatbotSettings />} />
             <Route path="settings" element={<SystemSettingsPage />} />
           </Route>
 

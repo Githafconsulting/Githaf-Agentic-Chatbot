@@ -1,17 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Activity } from 'lucide-react';
+import { TrendingUp, Activity, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { apiService } from '../../services/api';
 import type { DailyStats } from '../../types';
+import { DateRangePicker } from '../DateRangePicker';
 
 interface DailyVisitsChartProps {
   data: DailyStats[];
   loading?: boolean;
+  dateRange?: {
+    startDate: Date;
+    endDate: Date;
+  };
 }
 
-export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loading = false }) => {
+export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loading = false, dateRange }) => {
   const { t } = useTranslation();
+
+  // Comparison period state
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonData, setComparisonData] = useState<DailyStats[]>([]);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonPeriod, setComparisonPeriod] = useState<{
+    startDate: Date;
+    endDate: Date;
+  } | null>(null);
+
+  // Auto-calculate previous period when dateRange changes
+  useEffect(() => {
+    if (dateRange && showComparison) {
+      const daysDiff = Math.ceil((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const previousStart = new Date(dateRange.startDate.getTime() - daysDiff * 24 * 60 * 60 * 1000);
+      const previousEnd = new Date(dateRange.startDate.getTime() - 24 * 60 * 60 * 1000);
+      setComparisonPeriod({ startDate: previousStart, endDate: previousEnd });
+    }
+  }, [dateRange, showComparison]);
+
+  // Load comparison data
+  useEffect(() => {
+    if (comparisonPeriod && showComparison) {
+      loadComparisonData();
+    }
+  }, [comparisonPeriod, showComparison]);
+
+  const loadComparisonData = async () => {
+    if (!comparisonPeriod) return;
+
+    try {
+      setComparisonLoading(true);
+      const startDate = comparisonPeriod.startDate.toISOString().split('T')[0];
+      const endDate = comparisonPeriod.endDate.toISOString().split('T')[0];
+      const daily = await apiService.getDailyStats(startDate, endDate);
+      setComparisonData(daily);
+    } catch (err) {
+      console.error('Failed to load comparison data:', err);
+      setComparisonData([]);
+    } finally {
+      setComparisonLoading(false);
+    }
+  };
 
   // Format data for chart
   const chartData = data.map(stat => ({
@@ -21,16 +70,63 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
     satisfaction: (stat.avg_satisfaction || 0) * 100, // Convert to percentage
   }));
 
-  // Calculate trends
-  const calculateTrend = (data: number[]) => {
-    if (data.length < 2) return 0;
-    const recent = data.slice(-3).reduce((a, b) => a + b, 0) / 3;
-    const older = data.slice(0, 3).reduce((a, b) => a + b, 0) / 3;
-    return ((recent - older) / older) * 100;
+  // Calculate period-over-period trends (like Shopify/GA4)
+  const calculatePeriodTrend = (currentData: number[], comparisonDataValues: number[]) => {
+    // If comparison is enabled and we have comparison data, use it
+    if (showComparison && comparisonDataValues.length > 0) {
+      const currentTotal = currentData.reduce((a, b) => a + b, 0);
+      const comparisonTotal = comparisonDataValues.reduce((a, b) => a + b, 0);
+
+      const periodLabel = comparisonPeriod
+        ? `vs ${comparisonPeriod.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${comparisonPeriod.endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : 'vs comparison period';
+
+      if (comparisonTotal === 0 && currentTotal === 0) {
+        return { trend: 0, label: periodLabel, isAbsolute: false };
+      }
+
+      if (comparisonTotal === 0) {
+        return { trend: currentTotal, label: periodLabel, isAbsolute: true };
+      }
+
+      const percentChange = ((currentTotal - comparisonTotal) / comparisonTotal) * 100;
+      return { trend: percentChange, label: periodLabel, isAbsolute: false };
+    }
+
+    // Otherwise, use half-period comparison (default behavior)
+    if (currentData.length < 2) return { trend: 0, label: 'No data', isAbsolute: false };
+
+    const halfPoint = Math.floor(currentData.length / 2);
+    const currentPeriod = currentData.slice(halfPoint);
+    const currentTotal = currentPeriod.reduce((a, b) => a + b, 0);
+    const previousPeriod = currentData.slice(0, halfPoint);
+    const previousTotal = previousPeriod.reduce((a, b) => a + b, 0);
+
+    if (previousTotal === 0 && currentTotal === 0) {
+      return { trend: 0, label: 'No activity', isAbsolute: false };
+    }
+
+    if (previousTotal === 0) {
+      return { trend: currentTotal, label: `vs previous ${halfPoint} days`, isAbsolute: true };
+    }
+
+    const percentChange = ((currentTotal - previousTotal) / previousTotal) * 100;
+    return { trend: percentChange, label: `vs previous ${halfPoint} days`, isAbsolute: false };
   };
 
-  const conversationsTrend = calculateTrend(chartData.map(d => d.conversations));
-  const messagesTrend = calculateTrend(chartData.map(d => d.messages));
+  const comparisonChartData = comparisonData.map(stat => ({
+    conversations: stat.conversations || 0,
+    messages: stat.messages || 0,
+  }));
+
+  const conversationsResult = calculatePeriodTrend(
+    chartData.map(d => d.conversations),
+    comparisonChartData.map(d => d.conversations)
+  );
+  const messagesResult = calculatePeriodTrend(
+    chartData.map(d => d.messages),
+    comparisonChartData.map(d => d.messages)
+  );
 
   if (loading) {
     return (
@@ -66,7 +162,7 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
             <TrendingUp size={24} className="text-white" />
@@ -77,19 +173,77 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
           </div>
         </div>
 
+        {/* Comparison Toggle */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowComparison(!showComparison)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+              showComparison
+                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            <Calendar size={16} />
+            <span className="text-sm font-medium">
+              {showComparison ? 'Hide Comparison' : 'Compare Period'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Comparison Period Selector */}
+      {showComparison && comparisonPeriod && (
+        <div className="mb-4">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Compare to:</p>
+
+            <DateRangePicker
+              value={comparisonPeriod}
+              onChange={(range) => setComparisonPeriod(range)}
+              maxDate={dateRange?.startDate ? new Date(dateRange.startDate.getTime() - 24 * 60 * 60 * 1000) : new Date()}
+            />
+
+            {comparisonLoading && (
+              <div className="flex items-center gap-2 text-blue-400 text-sm">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full"
+                />
+                <span>Loading...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Trend indicators */}
+      <div className="flex items-center justify-between mb-6">
+        <div></div>  {/* Spacer */}
+
         {/* Trend indicators */}
-        <div className="flex gap-4">
+        <div className="flex gap-6">
           <div className="text-right">
-            <p className="text-xs text-slate-400">Conversations</p>
-            <p className={`text-sm font-semibold ${conversationsTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {conversationsTrend >= 0 ? '+' : ''}{conversationsTrend.toFixed(1)}%
-            </p>
+            <p className="text-xs text-slate-400 mb-1">Conversations</p>
+            {conversationsResult.isAbsolute ? (
+              <p className="text-sm font-semibold text-blue-400">+{conversationsResult.trend}</p>
+            ) : (
+              <p className={`text-sm font-semibold ${conversationsResult.trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {conversationsResult.trend >= 0 ? '+' : ''}{conversationsResult.trend.toFixed(1)}%
+              </p>
+            )}
+            <p className="text-[10px] text-slate-500 mt-0.5">{conversationsResult.label}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-400">Messages</p>
-            <p className={`text-sm font-semibold ${messagesTrend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {messagesTrend >= 0 ? '+' : ''}{messagesTrend.toFixed(1)}%
-            </p>
+            <p className="text-xs text-slate-400 mb-1">Messages</p>
+            {messagesResult.isAbsolute ? (
+              <p className="text-sm font-semibold text-blue-400">+{messagesResult.trend}</p>
+            ) : (
+              <p className={`text-sm font-semibold ${messagesResult.trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {messagesResult.trend >= 0 ? '+' : ''}{messagesResult.trend.toFixed(1)}%
+              </p>
+            )}
+            <p className="text-[10px] text-slate-500 mt-0.5">{messagesResult.label}</p>
           </div>
         </div>
       </div>
@@ -103,8 +257,8 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
               <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+              <stop offset="5%" stopColor="#eab308" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -115,8 +269,14 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
           <XAxis
             dataKey="date"
             stroke="#94a3b8"
-            tick={{ fill: '#94a3b8', fontSize: 12 }}
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
             tickLine={{ stroke: '#475569' }}
+            angle={-45}
+            textAnchor="end"
+            height={80}
+            interval={0}
+            scale="point"
+            padding={{ left: 20, right: 20 }}
           />
           <YAxis
             stroke="#94a3b8"
@@ -150,7 +310,7 @@ export const DailyVisitsChart: React.FC<DailyVisitsChartProps> = ({ data, loadin
           <Area
             type="monotone"
             dataKey="messages"
-            stroke="#0ea5e9"
+            stroke="#eab308"
             strokeWidth={2}
             fill="url(#colorMessages)"
             name="Messages"

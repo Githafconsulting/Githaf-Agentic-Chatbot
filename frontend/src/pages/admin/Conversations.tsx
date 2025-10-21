@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Clock, Star, User, Bot, ThumbsUp, ThumbsDown, MessageCircle, Hash, Calendar, AlertCircle } from 'lucide-react';
+import { MessageSquare, Clock, Star, User, Bot, ThumbsUp, ThumbsDown, MessageCircle, Hash, Calendar, AlertCircle, Trash2, Loader2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import type { Conversation, ConversationMessage } from '../../types';
 import { staggerContainer, staggerItem } from '../../utils/animations';
@@ -10,6 +10,7 @@ export const ConversationsPage: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -43,6 +44,29 @@ export const ConversationsPage: React.FC = () => {
     }
   };
 
+  const handleDeleteConversation = async (conversationId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent conversation selection
+
+    if (!confirm('Are you sure you want to soft delete this conversation? It and all related messages/feedback can be recovered from the Deleted Items page within 30 days.')) return;
+
+    try {
+      setProcessingId(conversationId);
+      await apiService.softDeleteConversation(conversationId);
+
+      // Clear selected conversation if it was deleted
+      if (selectedConversation?.id === conversationId) {
+        setSelectedConversation(null);
+      }
+
+      await loadConversations();
+      alert('Conversation soft-deleted successfully!');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to delete conversation');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
     <motion.div
       className="space-y-6"
@@ -51,15 +75,12 @@ export const ConversationsPage: React.FC = () => {
       variants={staggerContainer}
     >
       <motion.div variants={staggerItem} className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shadow-md">
-          <MessageCircle className="text-white" size={28} />
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-500 flex items-center justify-center shadow-lg">
+          <MessageSquare className="text-white" size={24} />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-slate-50">Conversations</h1>
-          <p className="text-slate-300 mt-1 flex items-center gap-2">
-            <User size={16} />
-            View all customer interactions
-          </p>
+          <h1 className="text-2xl font-bold text-slate-50">Conversations</h1>
+          <p className="text-slate-400 text-sm mt-0.5">View all customer interactions</p>
         </div>
       </motion.div>
 
@@ -77,17 +98,22 @@ export const ConversationsPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-220px)]">
         {/* Conversations List */}
-        <motion.div variants={staggerItem} className="card-hover rounded-2xl shadow-soft overflow-hidden">
-          <div className="p-6 border-b border-neutral-100 bg-gradient-to-r from-primary-50 to-secondary-50">
+        <motion.div variants={staggerItem} className="card-hover rounded-2xl shadow-soft overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-neutral-100 bg-gradient-to-r from-primary-50 to-secondary-50 flex-shrink-0">
             <h2 className="text-xl font-semibold text-slate-50 flex items-center gap-2">
               <MessageSquare size={24} className="text-primary-600" />
               All Conversations
+              {!loading && (
+                <span className="ml-2 text-slate-300 font-medium">
+                  ({conversations.length})
+                </span>
+              )}
             </h2>
           </div>
 
-          <div className="divide-y divide-neutral-100 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-neutral-100 flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-12 text-center">
                 <motion.div
@@ -117,12 +143,30 @@ export const ConversationsPage: React.FC = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
                   onClick={() => loadConversationDetails(conv.id)}
-                  className={`p-4 hover:bg-slate-700 cursor-pointer transition-colors ${
-                    selectedConversation?.id === conv.id ? 'bg-primary-900/30 border-l-4 border-primary-400' : ''
+                  className={`p-4 cursor-pointer transition-all ${
+                    selectedConversation?.id === conv.id
+                      ? 'bg-gradient-to-r from-blue-900/60 to-cyan-900/60 border-2 border-blue-400 rounded-lg shadow-lg shadow-blue-400/40'
+                      : 'hover:bg-slate-700'
                   }`}
                   whileHover={{ x: 4 }}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Conversation Number */}
+                    <motion.div
+                      animate={selectedConversation?.id === conv.id ? {
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 5, -5, 0]
+                      } : {}}
+                      transition={{ duration: 0.5 }}
+                      className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
+                        selectedConversation?.id === conv.id
+                          ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/50'
+                          : 'bg-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {conversations.length - index}
+                    </motion.div>
+
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center flex-shrink-0">
@@ -152,6 +196,24 @@ export const ConversationsPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <motion.button
+                        onClick={(e) => handleDeleteConversation(conv.id, e)}
+                        disabled={processingId === conv.id}
+                        className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete conversation"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        {processingId === conv.id ? (
+                          <Loader2 className="animate-spin" size={16} />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </motion.button>
+                    </div>
                   </div>
                 </motion.div>
               ))
@@ -160,15 +222,15 @@ export const ConversationsPage: React.FC = () => {
         </motion.div>
 
         {/* Conversation Details */}
-        <motion.div variants={staggerItem} className="card-hover rounded-2xl shadow-soft overflow-hidden">
-          <div className="p-6 border-b border-neutral-100 bg-gradient-to-r from-secondary-50 to-primary-50">
+        <motion.div variants={staggerItem} className="card-hover rounded-2xl shadow-soft overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-neutral-100 bg-gradient-to-r from-secondary-50 to-primary-50 flex-shrink-0">
             <h2 className="text-xl font-semibold text-slate-50 flex items-center gap-2">
               <Bot size={24} className="text-secondary-600" />
               Conversation Details
             </h2>
           </div>
 
-          <div className="p-6 max-h-[600px] overflow-y-auto">
+          <div className="p-6 flex-1 overflow-y-auto">
             {!selectedConversation ? (
               <div className="text-center py-16">
                 <motion.div
@@ -189,7 +251,7 @@ export const ConversationsPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-gradient-to-r from-blue-600 to-cyan-600 p-4 rounded-xl shadow-lg shadow-blue-500/30"
                 >
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 gap-4 text-sm">
                     <div>
                       <span className="text-white/90 font-medium flex items-center gap-1">
                         <Hash size={14} />
@@ -197,12 +259,41 @@ export const ConversationsPage: React.FC = () => {
                       </span>
                       <p className="font-mono text-xs mt-1 text-white">{selectedConversation.session_id}</p>
                     </div>
-                    <div>
-                      <span className="text-white/90 font-medium flex items-center gap-1">
-                        <Clock size={14} />
-                        Started:
-                      </span>
-                      <p className="mt-1 text-white">{new Date(selectedConversation.created_at).toLocaleString()}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-white/90 font-medium flex items-center gap-1">
+                          <Clock size={14} />
+                          Started:
+                        </span>
+                        <p className="mt-1 text-white">{new Date(selectedConversation.created_at).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-white/90 font-medium flex items-center gap-1">
+                          <Clock size={14} />
+                          Ended:
+                        </span>
+                        <p className="mt-1 text-white">
+                          {(() => {
+                            // If ended_at exists, use it
+                            if (selectedConversation.ended_at) {
+                              return new Date(selectedConversation.ended_at).toLocaleString();
+                            }
+
+                            // Otherwise, check if conversation is recent (within 30 minutes)
+                            const lastMessageTime = new Date(selectedConversation.last_message_at).getTime();
+                            const now = Date.now();
+                            const thirtyMinutesInMs = 30 * 60 * 1000;
+
+                            if (now - lastMessageTime < thirtyMinutesInMs) {
+                              // Recent conversation - likely still active
+                              return <span className="text-green-300 font-semibold">Still Active</span>;
+                            } else {
+                              // Old conversation - assume it ended at last message time
+                              return <span className="text-slate-300">{new Date(selectedConversation.last_message_at).toLocaleString()}</span>;
+                            }
+                          })()}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

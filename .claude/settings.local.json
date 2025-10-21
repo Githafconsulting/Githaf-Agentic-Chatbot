@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nslookup:*)",
+      "Bash(ipconfig /flushdns)",
+      "Bash(ipconfig)",
+      "Bash(set HTTPX_LOG_LEVEL=trace)",
+      "Bash(\"./venv/Scripts/uvicorn\" app.main:app --reload --port 8000)",
+      "Bash(timeout:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(\"./venv/Scripts/pip\" install --upgrade httpx httpcore)",
+      "Bash(curl -X POST \"http://127.0.0.1:8000/api/v1/auth/login\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@githafconsulting.com\"\",\"\"password\"\":\"\"admin123\"\"}\")",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)",
+      "Bash(dir)",
+      "Bash(dir backend)",
+      "Bash(dir:*)",
+      "Bash(venvScripts:*)",
+      "Bash(.venvScriptsuvicorn app.main:app --reload)",
+      "Bash(curl:*)",
+      "Bash(.venvScriptspip install --upgrade httpx httpcore)",
+      "Bash(.venvScriptspython test_connection.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
