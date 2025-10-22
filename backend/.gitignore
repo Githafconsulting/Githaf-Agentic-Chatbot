@@ -50,7 +50,7 @@ Thumbs.db
 htmlcov/
 
 # Models (large files)
-models/
-*.bin
-*.pt
-*.pth
+# models/
+# *.bin
+# *.pt
+# *.pth
