@@ -54,3 +54,6 @@ htmlcov/
 # *.bin
 # *.pt
 # *.pth
+
+# Playwright
+playwright/.cache/
