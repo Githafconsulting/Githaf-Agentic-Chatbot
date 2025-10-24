@@ -20,7 +20,8 @@
       "Bash(.venvScriptsuvicorn app.main:app --reload)",
       "Bash(curl:*)",
       "Bash(.venvScriptspip install --upgrade httpx httpcore)",
-      "Bash(.venvScriptspython test_connection.py)"
+      "Bash(.venvScriptspython test_connection.py)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
