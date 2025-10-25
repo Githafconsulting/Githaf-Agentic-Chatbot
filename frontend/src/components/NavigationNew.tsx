@@ -33,7 +33,7 @@ export const NavigationNew: React.FC = () => {
   return (
     <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 pt-4">
       <motion.nav
-        className="container mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700"
+        className="container mx-auto bg-white dark:bg-slate-900 rounded-[32px] shadow-xl border border-slate-200 dark:border-slate-700"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -107,7 +107,7 @@ export const NavigationNew: React.FC = () => {
                 variant="primary"
                 size="md"
                 onClick={() => navigate('/signup')}
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg font-medium rounded-2xl"
               >
                 Get Started Free
               </Button>
@@ -246,7 +246,7 @@ export const NavigationNew: React.FC = () => {
                       navigate('/signup');
                       setIsMenuOpen(false);
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-2xl"
                   >
                     Get Started Free
                   </Button>

@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
 
+/* Import Manrope font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+
 /**
  * GITHAFORGE GLOBAL STYLES
  * Minimal global CSS - most styling uses design tokens

@@ -275,20 +275,23 @@ export const DocumentsPage: React.FC = () => {
               <FileText className="text-white" size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-50">Knowledge Base</h1>
-              <p className="text-slate-400 text-sm mt-0.5">Manage documents and review AI-generated drafts</p>
+              <h1 className="text-2xl font-bold text-theme-primary">Knowledge Base</h1>
+              <p className="text-theme-muted text-sm mt-0.5">Manage documents and review AI-generated drafts</p>
             </div>
           </div>
 
           {activeTab === 'documents' && (
             <div className="flex gap-3">
-              <motion.label
-                className="btn-primary cursor-pointer flex items-center gap-2 px-6 py-3 rounded-xl shadow-md"
-                whileHover={{ scale: 1.05, boxShadow: '0 8px 20px -5px rgba(30, 64, 175, 0.4)' }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Upload size={20} />
-                {uploading ? 'Uploading...' : 'Upload File'}
+              <label className="cursor-pointer">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={<Upload size={20} />}
+                  isLoading={uploading}
+                  as="span"
+                >
+                  {uploading ? 'Uploading...' : 'Upload File'}
+                </Button>
                 <input
                   type="file"
                   accept=".pdf,.txt,.docx"
@@ -296,29 +299,28 @@ export const DocumentsPage: React.FC = () => {
                   disabled={uploading}
                   className="hidden"
                 />
-              </motion.label>
+              </label>
 
-              <motion.button
+              <Button
+                variant="secondary"
+                size="lg"
+                icon={<LinkIcon size={20} />}
                 onClick={() => setShowUrlModal(true)}
-                className="btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl shadow-md"
-                whileHover={{ scale: 1.05, boxShadow: '0 8px 20px -5px rgba(14, 165, 233, 0.4)' }}
-                whileTap={{ scale: 0.98 }}
               >
-                <LinkIcon size={20} />
                 Add from URL
-              </motion.button>
+              </Button>
             </div>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-700">
+        <div className="flex gap-2 border-b border-theme">
           <button
             onClick={() => setActiveTab('documents')}
             className={`px-6 py-3 font-medium transition-colors relative ${
               activeTab === 'documents'
-                ? 'text-primary-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-primary-500'
+                : 'text-theme-muted hover:text-theme-primary'
             }`}
           >
             <Files size={18} className="inline mr-2" />
@@ -326,7 +328,7 @@ export const DocumentsPage: React.FC = () => {
             {activeTab === 'documents' && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500"
               />
             )}
           </button>
@@ -334,8 +336,8 @@ export const DocumentsPage: React.FC = () => {
             onClick={() => setActiveTab('drafts')}
             className={`px-6 py-3 font-medium transition-colors relative ${
               activeTab === 'drafts'
-                ? 'text-primary-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-primary-500'
+                : 'text-theme-muted hover:text-theme-primary'
             }`}
           >
             <Sparkles size={18} className="inline mr-2" />
@@ -343,7 +345,7 @@ export const DocumentsPage: React.FC = () => {
             {activeTab === 'drafts' && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500"
               />
             )}
           </button>
@@ -351,13 +353,14 @@ export const DocumentsPage: React.FC = () => {
 
         {/* Filter Dropdown - Only show for Documents tab */}
         {activeTab === 'documents' && (
-          <div className="flex items-center gap-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <label className="text-sm font-medium text-slate-300">Filter by Source:</label>
-            <select
-              value={sourceTypeFilter}
-              onChange={(e) => setSourceTypeFilter(e.target.value as any)}
-              className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
+          <Card glass variant="elevated" className="p-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-theme-secondary">Filter by Source:</label>
+              <select
+                value={sourceTypeFilter}
+                onChange={(e) => setSourceTypeFilter(e.target.value as any)}
+                className="px-4 py-2 bg-theme-secondary border border-theme rounded-lg text-theme-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
               <option value="all">All Documents ({documents.length})</option>
               <option value="upload">Manually Uploaded ({documents.filter(d => d.source_type === 'upload').length})</option>
               <option value="url">From URL ({documents.filter(d => d.source_type === 'url').length})</option>
