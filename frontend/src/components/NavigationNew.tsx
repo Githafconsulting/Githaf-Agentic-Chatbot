@@ -31,18 +31,15 @@ export const NavigationNew: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <motion.nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'glass border-b border-theme shadow-lg'
-          : 'bg-transparent'
-      }`}
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-    >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+    <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 pt-4">
+      <motion.nav
+        className="container mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
           {/* Logo - Enhanced */}
           <Link to="/" className="flex items-center gap-3 group relative z-10">
             <motion.div
@@ -110,7 +107,7 @@ export const NavigationNew: React.FC = () => {
                 variant="primary"
                 size="md"
                 onClick={() => navigate('/signup')}
-                className="shadow-lg shadow-primary-500/30 font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg font-medium"
               >
                 Get Started Free
               </Button>
@@ -249,7 +246,7 @@ export const NavigationNew: React.FC = () => {
                       navigate('/signup');
                       setIsMenuOpen(false);
                     }}
-                    className="shadow-lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
                   >
                     Get Started Free
                   </Button>
@@ -266,6 +263,7 @@ export const NavigationNew: React.FC = () => {
           </>
         )}
       </AnimatePresence>
-    </motion.nav>
+      </motion.nav>
+    </div>
   );
 };

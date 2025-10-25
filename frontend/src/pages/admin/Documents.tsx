@@ -4,6 +4,7 @@ import { Upload, Link as LinkIcon, Trash2, FileText, ExternalLink, Database, Fil
 import { apiService } from '../../services/api';
 import type { Document, DraftDocument } from '../../types';
 import { staggerContainer, staggerItem } from '../../utils/animations';
+import { Card, Button, Badge } from '../../components/ui';
 
 type TabType = 'documents' | 'drafts';
 
