@@ -562,7 +562,7 @@ export const DocumentsPage: React.FC = () => {
           draftsLoading ? (
             <div className="p-12 text-center">
               <Loader2 className="animate-spin w-12 h-12 text-primary-400 mx-auto mb-4" />
-              <p className="text-slate-300">Loading drafts...</p>
+              <p className="text-theme-secondary">Loading drafts...</p>
             </div>
           ) : drafts.length === 0 ? (
             <div className="p-12 text-center">
@@ -574,11 +574,11 @@ export const DocumentsPage: React.FC = () => {
               >
                 <Sparkles size={40} className="text-yellow-600" />
               </motion.div>
-              <p className="text-slate-300 text-lg">No pending drafts</p>
-              <p className="text-slate-400 text-sm mt-2">AI-generated drafts will appear here for review</p>
+              <p className="text-theme-secondary text-lg">No pending drafts</p>
+              <p className="text-theme-muted text-sm mt-2">AI-generated drafts will appear here for review</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-theme">
               <AnimatePresence>
                 {drafts.map((draft, index) => (
                   <motion.div
@@ -684,7 +684,8 @@ export const DocumentsPage: React.FC = () => {
             </div>
           )
         )}
-      </motion.div>
+        </motion.div>
+      </Card>
 
       {/* URL Modal */}
       <AnimatePresence>
