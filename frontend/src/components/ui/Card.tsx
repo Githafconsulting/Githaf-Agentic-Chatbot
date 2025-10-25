@@ -8,6 +8,8 @@ interface CardProps {
   className?: string;
   hover?: boolean;
   onClick?: () => void;
+  glass?: boolean;
+  variant?: 'elevated' | 'flat' | 'outlined';
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -15,13 +17,23 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   hover = false,
   onClick,
+  glass = false,
+  variant = 'elevated',
 }) => {
   const Component = hover ? motion.div : 'div';
+
+  const variantClasses = {
+    elevated: 'bg-theme-primary shadow-md hover:shadow-lg',
+    flat: 'bg-theme-secondary',
+    outlined: 'bg-theme-primary border-2 border-theme',
+  };
 
   return (
     <Component
       className={clsx(
-        'card bg-white rounded-xl shadow-soft p-6',
+        'rounded-xl p-6 transition-all',
+        variantClasses[variant],
+        glass && 'glass',
         hover && 'cursor-pointer',
         className
       )}
@@ -39,7 +51,7 @@ export const CardHeader: React.FC<{ children: React.ReactNode; className?: strin
   children,
   className = '',
 }) => (
-  <div className={clsx('border-b border-neutral-200 pb-4 mb-4', className)}>
+  <div className={clsx('border-b border-theme pb-4 mb-4', className)}>
     {children}
   </div>
 );
@@ -48,7 +60,7 @@ export const CardTitle: React.FC<{ children: React.ReactNode; className?: string
   children,
   className = '',
 }) => (
-  <h3 className={clsx('text-xl font-semibold text-neutral-900', className)}>
+  <h3 className={clsx('text-xl font-semibold text-theme-primary', className)}>
     {children}
   </h3>
 );
@@ -57,7 +69,7 @@ export const CardDescription: React.FC<{ children: React.ReactNode; className?: 
   children,
   className = '',
 }) => (
-  <p className={clsx('text-sm text-neutral-600 mt-1', className)}>
+  <p className={clsx('text-sm text-theme-secondary mt-1', className)}>
     {children}
   </p>
 );
@@ -71,7 +83,7 @@ export const CardFooter: React.FC<{ children: React.ReactNode; className?: strin
   children,
   className = '',
 }) => (
-  <div className={clsx('border-t border-neutral-200 pt-4 mt-4', className)}>
+  <div className={clsx('border-t border-theme pt-4 mt-4', className)}>
     {children}
   </div>
 );

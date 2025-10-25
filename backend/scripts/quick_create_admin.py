@@ -40,13 +40,15 @@ def create_default_admin():
         # Hash password
         password_hash = get_password_hash(password)
 
-        # Create admin user
+        # Create admin user (Githaforge v2.0 schema)
         data = {
             "email": email,
             "password_hash": password_hash,
             "full_name": full_name,
+            "role": "super_admin",  # super_admin for Githaf internal use
             "is_active": True,
-            "is_admin": True,
+            "email_verified": True,
+            "onboarding_completed": True,
             "created_at": datetime.utcnow().isoformat()
         }
 

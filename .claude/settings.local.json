@@ -24,7 +24,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd deployment configuration and update dependencies\n\nChanges:\n- Added Render deployment configuration (render.yaml, runtime.txt)\n- Added production requirements (requirements.prod.txt)\n- Added Netlify deployment configuration (netlify.toml)\n- Added production environment file (.env.production)\n- Updated backend requirements.txt with latest dependencies\n- Updated frontend package.json with new dependencies\n- Enhanced frontend main.tsx with improved initialization\n- Updated Claude settings configurations\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(del .gitmodules ARCHITECTURE.md SETUP_CHECKLIST.md SUBMODULES_CHEATSHEET.md SUBMODULES_WORKFLOW.md START_HERE.md sync_all.ps1 sync_all.sh)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

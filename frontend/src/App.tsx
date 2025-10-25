@@ -4,7 +4,13 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { AdminLayout } from './components/layout/AdminLayout';
-import { Home } from './pages/Home';
+import { HomeNew } from './pages/HomeNew';
+import { Landing } from './pages/Landing';
+import { Features } from './pages/Features';
+import { Pricing } from './pages/Pricing';
+import { Contact } from './pages/Contact';
+import { Signup } from './pages/Signup';
+import { Onboarding } from './pages/Onboarding';
 import { Login } from './pages/Login';
 import { AnalyticsPage } from './pages/admin/Analytics';
 import { DocumentsPage } from './pages/admin/Documents';
@@ -27,9 +33,17 @@ function App() {
           <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<HomeNew />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/landing" element={<Landing />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/embed" element={<EmbedPage />} />
+
+          {/* Onboarding (semi-protected - requires signup) */}
+          <Route path="/onboarding" element={<Onboarding />} />
 
           {/* Admin Routes */}
           <Route

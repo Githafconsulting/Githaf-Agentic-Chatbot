@@ -9,7 +9,7 @@ import 'react-resizable/css/styles.css';
 import '../../styles/grid-layout.css';
 import { apiService } from '../../services/api';
 import { staggerContainer, staggerItem } from '../../utils/animations';
-import { CardSkeleton } from '../../components/ui';
+import { Card, CardSkeleton, Button, Badge } from '../../components/ui';
 import { DateRangePicker } from '../../components/DateRangePicker';
 import { DailyVisitsChart } from '../../components/analytics/DailyVisitsChart';
 import { CountryStats } from '../../components/analytics/CountryStats';
@@ -17,7 +17,15 @@ import { WorldMap } from '../../components/analytics/WorldMap';
 import { FeedbackInsights } from '../../components/analytics/FeedbackInsights';
 import type { Analytics, DailyStats, CountryStats as CountryStatsType } from '../../types';
 
-const COLORS = ['#1e40af', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+// Use design tokens for colors
+const COLORS = [
+  'hsl(217, 91%, 60%)',  // primary-500
+  'hsl(199, 89%, 48%)',  // secondary-500
+  'hsl(142, 71%, 45%)',  // green-500
+  'hsl(38, 92%, 50%)',   // yellow-500
+  'hsl(6, 78%, 57%)',    // red-500
+  'hsl(271, 91%, 65%)'   // accent-500
+];
 
 // Helper function to generate unique colors
 const generateUniqueColors = (count: number): string[] => {
@@ -304,17 +312,19 @@ export const AnalyticsPage: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
-        <motion.div
-          className="bg-red-500/10 border border-red-500/30 text-red-400 px-8 py-6 rounded-2xl flex items-center gap-3 max-w-md"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <AlertCircle size={24} />
-          <div>
-            <h3 className="font-semibold text-lg mb-1">Failed to Load Analytics</h3>
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
-        </motion.div>
+        <Card glass variant="elevated" className="max-w-md">
+          <motion.div
+            className="px-8 py-6 flex items-center gap-3"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <AlertCircle size={24} className="text-red-500" />
+            <div>
+              <h3 className="font-semibold text-lg mb-1 text-theme-primary">Failed to Load Analytics</h3>
+              <p className="text-sm text-theme-secondary">{error}</p>
+            </div>
+          </motion.div>
+        </Card>
       </div>
     );
   }
@@ -322,17 +332,19 @@ export const AnalyticsPage: React.FC = () => {
   if (!analytics) {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
-        <motion.div
-          className="bg-slate-800 border border-slate-700 text-slate-100 px-8 py-6 rounded-2xl flex items-center gap-3"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <AlertCircle size={24} className="text-slate-300" />
-          <div>
-            <h3 className="font-semibold text-lg mb-1">No Analytics Data</h3>
-            <p className="text-sm text-slate-300">Unable to load analytics at this time.</p>
-          </div>
-        </motion.div>
+        <Card glass variant="elevated">
+          <motion.div
+            className="px-8 py-6 flex items-center gap-3"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <AlertCircle size={24} className="text-theme-muted" />
+            <div>
+              <h3 className="font-semibold text-lg mb-1 text-theme-primary">No Analytics Data</h3>
+              <p className="text-sm text-theme-secondary">Unable to load analytics at this time.</p>
+            </div>
+          </motion.div>
+        </Card>
       </div>
     );
   }
@@ -465,21 +477,23 @@ export const AnalyticsPage: React.FC = () => {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <motion.div
+            <Card
               key={stat.label}
-              whileHover={{ y: -5, boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.15)' }}
-              className="card-hover p-6"
+              glass
+              hover
+              variant="elevated"
+              className="p-6"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-sm text-slate-300 font-medium">{stat.label}</p>
-                  <p className="text-3xl font-bold text-slate-50 mt-2">{stat.value}</p>
+                  <p className="text-sm text-theme-secondary font-medium">{stat.label}</p>
+                  <p className="text-3xl font-bold text-theme-primary mt-2">{stat.value}</p>
                 </div>
                 <div className={`bg-gradient-to-br ${stat.color} p-3 rounded-xl shadow-md`}>
                   <Icon className="text-white" size={24} />
                 </div>
               </div>
-            </motion.div>
+            </Card>
           );
         })}
       </div>
@@ -502,46 +516,46 @@ export const AnalyticsPage: React.FC = () => {
           containerPadding={[0, 0]}
         >
           {/* Daily Visits Chart */}
-          <div key="daily-visits" className="card p-4 flex flex-col h-full overflow-visible">
-            <div className="drag-handle cursor-move p-2 hover:bg-slate-700/20 rounded-lg transition-colors self-start mb-2">
-              <GripVertical className="text-slate-400" size={20} />
+          <Card key="daily-visits" glass variant="elevated" className="p-4 flex flex-col h-full overflow-visible">
+            <div className="drag-handle cursor-move p-2 hover:bg-theme-secondary rounded-lg transition-colors self-start mb-2">
+              <GripVertical className="text-theme-muted" size={20} />
             </div>
             <div className="flex-1 overflow-auto">
               <DailyVisitsChart data={dailyStats} loading={analyticsLoading} dateRange={dateRange} />
             </div>
-          </div>
+          </Card>
 
           {/* World Map */}
-          <div key="world-map" className="card p-4 flex flex-col h-full overflow-visible">
-            <div className="drag-handle cursor-move p-2 hover:bg-slate-700/20 rounded-lg transition-colors self-start mb-2">
-              <GripVertical className="text-slate-400" size={20} />
+          <Card key="world-map" glass variant="elevated" className="p-4 flex flex-col h-full overflow-visible">
+            <div className="drag-handle cursor-move p-2 hover:bg-theme-secondary rounded-lg transition-colors self-start mb-2">
+              <GripVertical className="text-theme-muted" size={20} />
             </div>
             <div className="flex-1 overflow-auto">
               <WorldMap data={countryStats} loading={analyticsLoading} />
             </div>
-          </div>
+          </Card>
 
           {/* Country Stats */}
-          <div key="country-stats" className="card p-4 flex flex-col h-full overflow-visible">
-            <div className="drag-handle cursor-move p-2 hover:bg-slate-700/20 rounded-lg transition-colors self-start mb-2">
-              <GripVertical className="text-slate-400" size={20} />
+          <Card key="country-stats" glass variant="elevated" className="p-4 flex flex-col h-full overflow-visible">
+            <div className="drag-handle cursor-move p-2 hover:bg-theme-secondary rounded-lg transition-colors self-start mb-2">
+              <GripVertical className="text-theme-muted" size={20} />
             </div>
             <div className="flex-1 overflow-auto">
               <CountryStats data={countryStats} loading={analyticsLoading} />
             </div>
-          </div>
+          </Card>
 
           {/* Trending Queries */}
-          <div key="trending-queries" className="card p-4 flex flex-col h-full overflow-visible">
-            <div className="drag-handle cursor-move p-2 hover:bg-slate-700/20 rounded-lg transition-colors self-start mb-2">
-              <GripVertical className="text-slate-400" size={20} />
+          <Card key="trending-queries" glass variant="elevated" className="p-4 flex flex-col h-full overflow-visible">
+            <div className="drag-handle cursor-move p-2 hover:bg-theme-secondary rounded-lg transition-colors self-start mb-2">
+              <GripVertical className="text-theme-muted" size={20} />
             </div>
             <div className="flex-1 overflow-auto">
-              <h2 className="text-xl font-semibold text-slate-50 flex items-center gap-2 mb-2">
+              <h2 className="text-xl font-semibold text-theme-primary flex items-center gap-2 mb-2">
                 <TrendingUp className="text-primary-600" size={24} />
                 Trending Queries
               </h2>
-              <p className="text-sm text-slate-300 mb-4">Most frequently asked questions</p>
+              <p className="text-sm text-theme-secondary mb-4">Most frequently asked questions</p>
 
               {trendingQueriesData.length > 0 ? (
                 <>
@@ -551,33 +565,26 @@ export const AnalyticsPage: React.FC = () => {
                       <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                       <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} />
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1e293b',
-                          border: '1px solid #334155',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                          color: '#f1f5f9'
-                        }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg max-w-xs">
-                                <p className="text-slate-50 font-semibold mb-2">{data.fullName}</p>
-                                <p className="text-slate-300 text-sm mb-2">Count: {data.value}</p>
+                              <Card glass variant="elevated" className="p-3 shadow-lg max-w-xs">
+                                <p className="text-theme-primary font-semibold mb-2">{data.fullName}</p>
+                                <p className="text-theme-secondary text-sm mb-2">Count: {data.value}</p>
                                 {data.samples && data.samples.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-slate-700">
-                                    <p className="text-slate-400 text-xs font-medium mb-1">Sample queries:</p>
+                                  <div className="mt-2 pt-2 border-t border-theme">
+                                    <p className="text-theme-muted text-xs font-medium mb-1">Sample queries:</p>
                                     <ul className="space-y-1">
                                       {data.samples.slice(0, 3).map((sample: string, idx: number) => (
-                                        <li key={idx} className="text-slate-300 text-xs italic">
+                                        <li key={idx} className="text-theme-secondary text-xs italic">
                                           "{sample.length > 60 ? sample.substring(0, 60) + '...' : sample}"
                                         </li>
                                       ))}
                                     </ul>
                                   </div>
                                 )}
-                              </div>
+                              </Card>
                             );
                           }
                           return null;
@@ -592,23 +599,23 @@ export const AnalyticsPage: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                <div className="flex flex-col items-center justify-center h-64 text-theme-muted">
                   <MessageSquare size={48} className="mb-3" />
                   <p>No trending queries yet</p>
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* Feedback Insights */}
-          <div key="feedback-insights" className="card p-4 flex flex-col h-full overflow-visible">
-            <div className="drag-handle cursor-move p-2 hover:bg-slate-700/20 rounded-lg transition-colors self-start mb-2">
-              <GripVertical className="text-slate-400" size={20} />
+          <Card key="feedback-insights" glass variant="elevated" className="p-4 flex flex-col h-full overflow-visible">
+            <div className="drag-handle cursor-move p-2 hover:bg-theme-secondary rounded-lg transition-colors self-start mb-2">
+              <GripVertical className="text-theme-muted" size={20} />
             </div>
             <div className="flex-1 overflow-auto">
               <FeedbackInsights loading={analyticsLoading} dateRange={dateRange} />
             </div>
-          </div>
+          </Card>
         </GridLayout>
       </div>
 
