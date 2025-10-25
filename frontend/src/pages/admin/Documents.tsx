@@ -366,7 +366,8 @@ export const DocumentsPage: React.FC = () => {
               <option value="url">From URL ({documents.filter(d => d.source_type === 'url').length})</option>
               <option value="draft_published">Auto-Published Drafts ({documents.filter(d => d.source_type === 'draft_published').length})</option>
             </select>
-          </div>
+            </div>
+          </Card>
         )}
       </motion.div>
 
