@@ -373,23 +373,27 @@ export const DocumentsPage: React.FC = () => {
 
       <AnimatePresence>
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl flex items-center gap-3 shadow-soft"
-          >
-            <AlertCircle size={20} />
-            <span className="flex-1">{error}</span>
-          </motion.div>
+          <Card glass variant="elevated">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="px-6 py-4 flex items-center gap-3"
+            >
+              <AlertCircle size={20} className="text-red-500" />
+              <span className="flex-1 text-theme-primary">{error}</span>
+            </motion.div>
+          </Card>
         )}
       </AnimatePresence>
 
       {/* Content Section - Documents or Drafts */}
-      <motion.div
-        variants={staggerItem}
-        className="card-hover rounded-2xl shadow-soft overflow-hidden"
+      <Card
+        glass
+        variant="elevated"
+        className="overflow-hidden"
       >
+        <motion.div variants={staggerItem}>
         {activeTab === 'documents' ? (
           // Documents Tab
           loading ? (
@@ -399,7 +403,7 @@ export const DocumentsPage: React.FC = () => {
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full mx-auto mb-4"
               />
-              <p className="text-slate-300">Loading documents...</p>
+              <p className="text-theme-secondary">Loading documents...</p>
             </div>
           ) : filteredDocuments.length === 0 ? (
             <div className="p-12 text-center">
@@ -411,15 +415,15 @@ export const DocumentsPage: React.FC = () => {
               >
                 <FileText size={40} className="text-primary-600" />
               </motion.div>
-              <p className="text-slate-300 text-lg">
+              <p className="text-theme-secondary text-lg">
                 {sourceTypeFilter === 'all' ? 'No documents yet' : `No ${sourceTypeFilter === 'draft_published' ? 'auto-published drafts' : sourceTypeFilter === 'upload' ? 'uploaded documents' : 'URL documents'} found`}
               </p>
-              <p className="text-slate-400 text-sm mt-2">
+              <p className="text-theme-muted text-sm mt-2">
                 {sourceTypeFilter === 'all' ? 'Upload a file or add from URL to get started' : 'Try changing the filter to see other documents'}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700">
+            <div className="divide-y divide-theme">
               <AnimatePresence>
                 {filteredDocuments.map((doc, index) => (
                   <motion.div
@@ -428,7 +432,7 @@ export const DocumentsPage: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ delay: index * 0.05 }}
-                    className="p-6 hover:bg-slate-700 transition-colors"
+                    className="p-6 hover:bg-theme-secondary transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -444,23 +448,23 @@ export const DocumentsPage: React.FC = () => {
                               <FileText size={20} className="text-white" />
                             )}
                           </div>
-                          <h3 className="text-lg font-semibold text-slate-50 truncate">{doc.title}</h3>
-                          <span className={`text-xs px-3 py-1 rounded-full font-medium flex-shrink-0 ${
-                            doc.source_type === 'draft_published'
-                              ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-                              : 'bg-primary-100 text-primary-700'
-                          }`}>
+                          <h3 className="text-lg font-semibold text-theme-primary truncate">{doc.title}</h3>
+                          <Badge
+                            variant={doc.source_type === 'draft_published' ? 'warning' : 'primary'}
+                            size="sm"
+                            className="flex-shrink-0"
+                          >
                             {doc.source_type === 'draft_published' ? '✨ Auto-Published' : doc.source_type}
-                          </span>
+                          </Badge>
                         </div>
 
                         {doc.summary && (
-                          <p className="text-sm text-slate-300 line-clamp-2 mb-3 ml-13">
+                          <p className="text-sm text-theme-secondary line-clamp-2 mb-3 ml-13">
                             {doc.summary}
                           </p>
                         )}
 
-                        <div className="flex items-center gap-4 text-sm text-slate-400 ml-13 flex-wrap">
+                        <div className="flex items-center gap-4 text-sm text-theme-muted ml-13 flex-wrap">
                           {doc.file_type && (
                             <span className="flex items-center gap-1">
                               <FileText size={14} />
